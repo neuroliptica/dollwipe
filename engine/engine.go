@@ -21,7 +21,9 @@ func InitPost(penv *env.Env, proxy network.Proxy) *Post {
 		Proxy: proxy,
 	}
 	post.SetUserAgent()
-	post.SetCookie()
+	for i := range post.Env.Cookies {
+		post.Verbose("COOKIE = ", fmt.Sprintf("%s=%s", post.Env.Cookies[i].Name, post.Env.Cookies[i].Value))
+	}
 
 	return &post
 }
@@ -47,8 +49,7 @@ func responseHandler(post *Post, code int32) {
 	case ERROR_INVALID_CAPTCHA:
 		break
 	default:
-		post.Log(fmt.Sprintf("неизвестный код = %d; Я пока не знаю, как на это реагировать!",
-			code))
+		post.Log(fmt.Sprintf("неизвестный код = %d; Я пока не знаю, как на это реагировать!", code))
 		// TODO: отправлять Message() и Code() как issue.
 	}
 	post.Env.Status <- false

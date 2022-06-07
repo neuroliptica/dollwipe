@@ -55,11 +55,13 @@ func (r *MakabaOk) Code() int32 {
 }
 
 func (r *MakabaOk) Message() string {
-	msg := "OK"
+	var msg string
 	if r.Status == "Redirect" {
-		msg += ", тред создан"
+		msg = "OK, тред создан."
+	} else {
+		msg = fmt.Sprintf("OK, пост %d отправлен.", r.Num)
 	}
-	return fmt.Sprintf("%s, пост %d отправлен.", msg, r.Num)
+	return msg
 }
 
 // Posting falied.
@@ -124,7 +126,7 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
 		req.Header.Add("Proxy-Authorization", basicAuth)
 	}
-	post.Verbose(req)
+	//post.Verbose(req)
 
 	// Setting up proxy.
 	var transport *http.Transport
@@ -151,20 +153,6 @@ func (post *Post) SendGet(link string) ([]byte, error) {
 		return nil, fmt.Errorf("не удалось сформировать GET запрос к %s", link)
 	}
 	return post.PerformReq(req)
-}
-
-// Setting up post headers.
-func (post *Post) SetCookie() {
-	//post.Cookie = make([]*http.Cookie, 0)
-	//var cookie = &http.Cookie{
-	//	Name:  COOKIE_KEY,
-	//	Value: COOKIE_VAL,
-	//}
-	//post.Cookie = append(post.Cookie, cookie)
-	//post.Cookie = post.Env.Cookies
-	for i := range post.Env.Cookies {
-		post.Verbose("COOKIE = ", fmt.Sprintf("%s=%s", post.Env.Cookies[i].Name, post.Env.Cookies[i].Value))
-	}
 }
 
 func (post *Post) SetUserAgent() {
@@ -210,23 +198,6 @@ func (post *Post) SolveCaptcha(solver captcha.Solver) error {
 	if err != nil {
 		return err
 	}
-	// ======== MANUAL
-	//err = ioutil.WriteFile("captcha.png", img, 0644)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//reader := bufio.NewReader(os.Stdin)
-	//value, err := reader.ReadString('\n')
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//if strings.HasSuffix(value, "\n") {
-	//	value = value[:len(value)-1]
-	//}
-	//post.CaptchaValue = value
-	//return nil
-	// ===== MANUAL
-
 	value, err := solver(img, post.Env.Key)
 	if err != nil {
 		return fmt.Errorf("ошибка решения капчи: %v", err)
