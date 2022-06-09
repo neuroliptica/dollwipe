@@ -12,6 +12,7 @@ import (
 	"unicode"
 )
 
+// Supported protocols.
 var protocols = map[string]bool{
 	"http":   true,
 	"https":  true,
@@ -19,9 +20,14 @@ var protocols = map[string]bool{
 	"socks5": true,
 }
 
-// protocol://n.n.n.n:port
-// protocol://login:pass@n.n.n.n:port
+// Default proxy format is:
+// protocol://ip:port
 
+// Or if the authorization required:
+// protocol://login:pass@ip:port
+
+// Get the protocol without ://.
+// Rest part will be returned also without ://.
 func getProtocol(addr string) (protocol, rest string, err error) {
 	arr := strings.Split(addr, ":")
 	if len(arr) < 3 || len(arr[1]) <= 2 {

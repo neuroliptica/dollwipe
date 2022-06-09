@@ -32,17 +32,18 @@ func getExt(fname string) string {
 	return ""
 }
 
+// Gen random filename, save original file's extension.
 func (f *File) RandName() string {
 	rand.Seed(time.Now().UnixNano())
 	var (
-		bName []byte
-		right = rand.Int()%40 + 30
+		letters  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321"
+		size     = rand.Int()%40 + 20
+		randname = make([]byte, size)
 	)
-	for i := 20; i < right; i++ {
-		b := rand.Intn(26)
-		bName = append(bName, byte('a'+b))
+	for i := 0; i < size; i++ {
+		randname[i] = letters[rand.Intn(len(letters))]
 	}
-	return string(bName) + getExt(f.Name)
+	return string(randname) + getExt(f.Name)
 }
 
 // WipeMode
@@ -76,6 +77,7 @@ var domains = map[string]bool{
 	"life": true,
 }
 
+// Block for wipe, sorry.
 var banned = map[string]bool{
 	"rm":   true,
 	"math": true,
@@ -157,13 +159,16 @@ type Env struct {
 	Logger  chan string // Global synced logger.
 	Verbose bool
 
-	Status               chan bool // true if post send, false if failed.
+	Status               chan bool // True if post send, false if failed.
 	PostsOk, PostsFailed int       // Counter
 
 	Domain  string
 	Cookies []*http.Cookie
 }
 
+// Get all files which we can post from dir folder.
+// They will be loaded at memory once, then we'll use them for posting without loading again.
+// 2 * 10^7 bytes is the size limit for single file.
 func getFiles(dir string) ([]File, error) {
 	cont, err := os.ReadDir(dir)
 	if err != nil {
@@ -220,6 +225,7 @@ func getCaptions(dir string) ([]string, error) {
 	return getNSplit(dir, "\n\n")
 }
 
+// Get all valid-formated proxies from dir.
 func getProxies(dir string) ([]network.Proxy, error) {
 	result := make([]network.Proxy, 0)
 	proxies, err := getNSplit(dir, "\n")
@@ -257,6 +263,7 @@ func (env *Env) parseFiles(dir string) {
 	}
 }
 
+// Parse all captions (post's texts) to env.Captions.
 func (env *Env) parseCaptions(dir string) {
 	switch env.TextMode {
 	case NO_CAPS:
@@ -296,7 +303,7 @@ func (env *Env) parseCaptions(dir string) {
 	}
 }
 
-// Check for validness and parse all proxies to env.Proxies :: []network.Proxy
+// Check for validness and parse all proxies to env.Proxies with []network.Proxy type.
 func (env *Env) parseProxies(dir string) {
 	if env.UseProxy {
 		log.Println("инициализирую прокси.")

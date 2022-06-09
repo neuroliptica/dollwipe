@@ -74,7 +74,9 @@ func GetRandomPost(board, thread string) (*Comment, error) {
 	return &post, nil
 }
 
-// Will get all posts from all threads on board.
+// Will get all posts from all threads on board, in parallel.
+// Content is about to be with the html tags, need replace.
+// TODO: replace the HTML tags in content with the makaba tags.
 func getPostsTexts(board string) ([]string, error) {
 	catalog, err := getAllThreads(board)
 	if err != nil {
