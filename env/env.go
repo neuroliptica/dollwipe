@@ -176,11 +176,13 @@ func getFiles(dir string) ([]File, error) {
 		files  []File
 		failed = 0
 		pred   = func(name string) bool {
+			name = strings.ToLower(name)
 			return strings.HasSuffix(name, ".jpg") ||
 				strings.HasSuffix(name, ".png") ||
 				strings.HasSuffix(name, ".jpeg") ||
 				strings.HasSuffix(name, ".mp4") ||
-				strings.HasSuffix(name, ".webm")
+				strings.HasSuffix(name, ".webm") ||
+				strings.HasSuffix(name, ".gif")
 		}
 	)
 	for _, file := range cont {
