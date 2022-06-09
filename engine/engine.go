@@ -86,15 +86,15 @@ func RunPost(post *Post) {
 		post.Env.Status <- false
 	}
 
-	post.Log("получаю id капчи.")
+	post.Log("получаю id капчи...")
 	cerr := post.SetCaptchaId()
 	if cerr != nil {
-		post.Log("не удалось получить id капчи!")
+		post.Log("не удалось получить id капчи.")
 		captchaIdErrorHandler(post, cerr)
 		return
 	}
 
-	post.Log("решаю капчу.")
+	post.Log("решаю капчу...")
 	err := post.SolveCaptcha(captcha.RuCaptchaSolver)
 	if err != nil {
 		failed(err)
@@ -104,7 +104,7 @@ func RunPost(post *Post) {
 
 	params, err := post.MakeParamsMap()
 	if err != nil { // This will appear only if we can't get a random thread.
-		post.Log("не удалось получить случайный тред!")
+		post.Log("не удалось получить случайный тред.")
 		failed(err)
 		return
 	}
@@ -112,14 +112,14 @@ func RunPost(post *Post) {
 	if post.Env.FilesPerPost != 0 {
 		files, err = post.MakeFilesMap()
 		if err != nil {
-			post.Log("не удалось выбрать файлы!")
+			post.Log("не удалось выбрать файлы.")
 			failed(err)
 			return
 		}
 	}
 	response, err := post.SendPost(params, files)
 	if err != nil {
-		post.Log("не удалось отправить пост!")
+		post.Log("не удалось отправить пост.")
 		failed(err)
 		return
 	}
