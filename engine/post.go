@@ -19,9 +19,9 @@ import (
 
 const (
 	OK = iota
-	BANNED
-	FAILED
-	SOLVER_FAILED
+	//BANNED
+	//FAILED
+	//SOLVER_FAILED
 )
 
 const (
@@ -55,13 +55,11 @@ func (r *MakabaOk) Code() int32 {
 }
 
 func (r *MakabaOk) Message() string {
-	var msg string
 	if r.Status == "Redirect" {
-		msg = "OK, тред создан."
+		return "OK, тред создан."
 	} else {
-		msg = fmt.Sprintf("OK, пост %d отправлен.", r.Num)
+		return fmt.Sprintf("OK, пост %d отправлен.", r.Num)
 	}
-	return msg
 }
 
 // Posting falied.
@@ -86,6 +84,7 @@ type Post struct {
 
 	CaptchaId, CaptchaValue string
 	Env                     *env.Env
+	HTTPFailed              uint32 // HTTP fail requests counter.
 }
 
 func (post *Post) Log(msg ...interface{}) {

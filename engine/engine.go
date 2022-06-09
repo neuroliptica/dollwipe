@@ -15,6 +15,9 @@ import (
 // Proxy full path is a key.
 var Posts map[string]*Post
 
+// How many times we can fail HTTP request to captcha before proxy get deleted.
+const limit = 5
+
 func InitPost(penv *env.Env, proxy network.Proxy) *Post {
 	post := Post{
 		Env:   penv,
@@ -24,7 +27,7 @@ func InitPost(penv *env.Env, proxy network.Proxy) *Post {
 	for i := range post.Env.Cookies {
 		post.Verbose("COOKIE = ", fmt.Sprintf("%s=%s", post.Env.Cookies[i].Name, post.Env.Cookies[i].Value))
 	}
-
+	post.HTTPFailed = 0
 	return &post
 }
 
@@ -61,14 +64,17 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 		post.Log("макаба вернула 0, ошибка получения. Истекли печенюшки?")
 	case captcha.CAPTCHA_HTTP_FAIL:
 		post.Log(cerr.Extra)
-		post.Log("ошибка отправки запроса. Кажется, плохая прокся. Удаляю.")
-		delete(Posts, post.Proxy.Addr)
+		post.HTTPFailed++
+		post.Log(fmt.Sprintf("%d/%d, ошибка подключения, ошибка получения капчи.", post.HTTPFailed, limit))
+		if post.HTTPFailed >= limit {
+			post.Log("прокся исчерпала попытки, удаляю.")
+			delete(Posts, post.Proxy.Addr)
+		}
 	case captcha.CAPTCHA_NEED_CHECK:
 		post.Log("макаба вернула NEED_CHECK. Я пока не знаю, как на это реагировать!")
 		post.Log("если вы видите это, то сообщите моему разработчику, пожалуйста!")
 	default:
-		post.Log(fmt.Sprintf("%d неизвестная ошибка при получении id капчи!",
-			cerr.ErrorId))
+		post.Log(fmt.Sprintf("%d неизвестная ошибка при получении id капчи!", cerr.ErrorId))
 	}
 	post.Env.Status <- false
 }
