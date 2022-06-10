@@ -201,6 +201,29 @@ class AntiCaptchaKey : GUI.EntryFrame {
     }
 }
 
+class Extra : GUI.Frame {
+    private Gtk.CheckButton verbose;
+    private Gtk.CheckButton color;
+
+    public Extra() {
+        base("Дополнительно", false, 0, Gtk.Orientation.HORIZONTAL);
+        
+        verbose = new Gtk.CheckButton.with_mnemonic("Доп. логи");
+        this.add_child(verbose);
+
+        color = new Gtk.CheckButton.with_mnemonic("Красить картинки");
+        this.add_child(color);
+    }
+
+    public bool need_verbose() {
+        return verbose.get_active();
+    }
+
+    public bool need_color() {
+        return color.get_active();
+    }
+}
+
 class Init {
     public int wipe_mode;
     public int text_mode;
@@ -223,6 +246,9 @@ class Init {
 
     public string key;
     public string domain;
+
+    public bool verbose;
+    public bool need_color;
 
     private string[] banned = {
         "rm",
@@ -293,6 +319,10 @@ class Init {
             command += @" -proxy-path $proxy_path";
         if (timeout > 0)
             command += @" -timeout $timeout";
+        if (verbose)
+            command += " -v";
+        if (need_color)
+            command += " -color";
 
         stdout.printf("%s\n", command);
         Posix.system(command);
@@ -392,6 +422,11 @@ class KukloGUI : GLib.Object {
         Gtk.Box key_box = create_hbox_with_parent(true, 0, right_vbox, LeftPanedBoxes.WIDTH, -1);
         var key         = new AntiCaptchaKey();
         key.add_parent(key_box);
+
+        // extra options
+        Gtk.Box extra_box = create_hbox_with_parent(true, 0, right_vbox, LeftPanedBoxes.WIDTH, -1);
+        var extra         = new Extra();
+        extra.add_parent(extra_box);
         // =================== /RIGHT =================
 
         main_window.show_all();
@@ -424,6 +459,9 @@ class KukloGUI : GLib.Object {
             init.threads = threads.get_int_value();
             init.iters   = iters.get_int_value();
             init.timeout = timeout.get_int_value();
+
+            init.verbose    = extra.need_verbose();
+            init.need_color = extra.need_color();
 
             if (!init.validate())
                 return;
