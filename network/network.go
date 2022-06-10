@@ -12,16 +12,20 @@ import (
 	"time"
 )
 
+// Struct for passing files in multipart form.
+// FormName is corresponding to <name=FormName>
+// Files is corresponding to pairs of (filename, content).
 type FileForm struct {
 	FormName string
 	Files    map[string][]byte
 }
 
+// Single proxy unit, on which single Post instance will be based.
 type Proxy struct {
-	Addr       string
+	Addr       string // For logging purpose.
 	AddrParsed *url.URL
 
-	Login, Pass string
+	Login, Pass string // If proxy is public, then these fields will be empty.
 }
 
 func (p Proxy) NoProxy() bool {
@@ -32,6 +36,7 @@ func (p Proxy) String() string {
 	return p.Addr
 }
 
+// Build new HTTP POST request to link with params in query.
 func NewPostRequest(link string, params map[string]string) (*http.Request, error) {
 	query := url.Values{}
 	for key, value := range params {
@@ -44,6 +49,8 @@ func NewPostRequest(link string, params map[string]string) (*http.Request, error
 	return req, nil
 }
 
+// Build new HTTP POST request with multipart-form data body.
+// Files should be passed as the single FileForm instance pointer.
 func NewPostMultipartRequest(link string, params map[string]string, files *FileForm) (*http.Request, error) {
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
@@ -73,6 +80,7 @@ func NewPostMultipartRequest(link string, params map[string]string, files *FileF
 	return req, nil
 }
 
+// Build HTTP GET request, perform it and return response body.
 func SendGet(link string) ([]byte, error) {
 	resp, err := http.Get(link)
 	if err != nil {
@@ -86,6 +94,8 @@ func SendGet(link string) ([]byte, error) {
 	return cont, nil
 }
 
+// Extra transport pointer should be passed if we want to set up proxy.
+// Otherwise use nil.
 func PerformReq(req *http.Request, transport *http.Transport) (*http.Response, error) {
 	client := &http.Client{
 		Timeout: time.Second * 10,

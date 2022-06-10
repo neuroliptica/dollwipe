@@ -7,6 +7,7 @@ import (
 	"fmt"
 )
 
+// Error codes.
 const (
 	CAPTCHA_FAIL = iota
 	CAPTCHA_NEED_CHECK
@@ -44,4 +45,6 @@ func (e *CaptchaIdError) Error() string {
 //	HTTPFail = NewCaptchaError(CAPTCHA_HTTP_FAIL, nil)
 //)
 
+// General solver function type.
+// Every captcha's solver function should satisfy this signature.
 type Solver = func(img []byte, key string) (string, error)

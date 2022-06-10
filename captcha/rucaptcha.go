@@ -1,3 +1,8 @@
+// rucaptcha.go: RuCaptcha online solver implementation.
+//
+// Send image to rucaptcha through api with ruCaptchaPost function;
+// Then check every cTimeout seconds for the answer with ruCaptchaGet function.
+
 package captcha
 
 import (
@@ -11,6 +16,7 @@ import (
 // Timeout in seconds between two GET requests to RuCaptcha servers.
 const cTimeout = 3
 
+// RuCaptcha API response struct.
 type RuCaptcha struct {
 	Status  int32
 	Request string

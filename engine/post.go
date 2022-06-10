@@ -24,16 +24,20 @@ const (
 	//SOLVER_FAILED
 )
 
+// Makaba's posting error codes.
 const (
 	ERROR_CLOSED          = -7
 	ERROR_BANNED          = -6
 	ERROR_INVALID_CAPTCHA = -5
 	ERROR_ACCESS_DENIED   = -4
+)
 
+const (
 	CAPTCHA_API = "/api/captcha/2chcaptcha/"
 	POST_API    = "/makaba/posting.fcgi?json=1"
 )
 
+// TODO: more user agents, also move them to file.
 var userAgents = []string{
 	"Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0",
 }
@@ -84,14 +88,16 @@ type Post struct {
 
 	CaptchaId, CaptchaValue string
 	Env                     *env.Env
-	HTTPFailed              uint32 // HTTP fail requests counter.
+	HTTPFailed              uint32 // Failed HTTP requests counter.
 }
 
+// General logging purpose method.
 func (post *Post) Log(msg ...interface{}) {
 	post.Env.Logger <- fmt.Sprintf("%s %s",
 		post.Proxy.String(), fmt.Sprint(msg...))
 }
 
+// Extra logs when -v flag is set.
 func (post *Post) Verbose(msg ...interface{}) {
 	if !post.Env.Verbose {
 		return
@@ -99,7 +105,7 @@ func (post *Post) Verbose(msg ...interface{}) {
 	post.Log(msg...)
 }
 
-// Custom TLS transport for send requests with proxy.
+// Build custom TLS transport for sending requests with proxy.
 func (post *Post) MakeTransport() *http.Transport {
 	config := &tls.Config{
 		InsecureSkipVerify: true,
@@ -114,24 +120,25 @@ func (post *Post) MakeTransport() *http.Transport {
 	return transport
 }
 
-// Perform request with post headers.
+// Perform request with post headers, proxy and cookies.
 func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
+	// Setting up headers.
 	for i := range post.Env.Cookies {
 		req.AddCookie(post.Env.Cookies[i])
 	}
 	req.Header.Add("User-Agent", post.UserAgent)
-	if post.Proxy.Login != "" && post.Proxy.Pass != "" {
+
+	// Setting up proxy.
+	if post.Env.UseProxy && post.Proxy.Login != "" && post.Proxy.Pass != "" {
 		credits := post.Proxy.Login + ":" + post.Proxy.Pass
 		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
 		req.Header.Add("Proxy-Authorization", basicAuth)
 	}
-	//post.Verbose(req)
-
-	// Setting up proxy.
 	var transport *http.Transport
 	if post.Env.UseProxy {
 		transport = post.MakeTransport()
 	}
+
 	resp, err := network.PerformReq(req, transport)
 	if err != nil {
 		return nil, err
@@ -145,6 +152,7 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	return cont, nil
 }
 
+// Perform HTTP GET request to url with post's headers, proxy and cookies.
 func (post *Post) SendGet(link string) ([]byte, error) {
 	req, err := http.NewRequest("GET", link, nil)
 	post.Verbose("отправляю HTTP GET запрос на ", link)
@@ -164,7 +172,7 @@ func (post *Post) SetPasscode() {
 	return
 }
 
-// Get captcha id from 2ch server and set CaptchaId field.
+// Get captcha id from 2ch server and set post.CaptchaId field.
 func (post *Post) SetCaptchaId() *captcha.CaptchaIdError {
 	link := "https://2ch." + post.Env.Domain + CAPTCHA_API + "id"
 	cont, err := post.SendGet(link)
@@ -192,6 +200,7 @@ func (post *Post) GetCaptchaImage() ([]byte, error) {
 	return img, nil
 }
 
+// Solver is a function, that must satisfy the signature described in captcha/captcha.go.
 func (post *Post) SolveCaptcha(solver captcha.Solver) error {
 	img, err := post.GetCaptchaImage()
 	if err != nil {
@@ -205,7 +214,8 @@ func (post *Post) SolveCaptcha(solver captcha.Solver) error {
 	return nil
 }
 
-// Map data for basic form in multipart request.
+// Build params map to pass them in multipart request.
+// I.e. everything, that is not a file.
 func (post *Post) MakeParamsMap() (map[string]string, error) {
 	board, thread := post.Env.Board, post.Env.Thread
 	if post.Env.WipeMode == env.SHRAPNEL {
@@ -241,7 +251,8 @@ func (post *Post) MakeParamsMap() (map[string]string, error) {
 	return params, nil
 }
 
-// Map data for file form in multipart request.
+// Build files map to pass them in multipart request.
+// Total size always will be <= 2 * 10^7 bytes (slightly less, than 20MB).
 func (post *Post) MakeFilesMap() (map[string][]byte, error) {
 	rand.Seed(time.Now().UnixNano())
 	var (

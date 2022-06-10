@@ -15,22 +15,23 @@ import (
 // Proxy full path is a key.
 var Posts map[string]*Post
 
-// How many times we can fail HTTP request to captcha before proxy get deleted.
+// How many times proxy can fail HTTP request to captcha before get deleted.
 const limit = 5
 
 func InitPost(penv *env.Env, proxy network.Proxy) *Post {
 	post := Post{
-		Env:   penv,
-		Proxy: proxy,
+		Env:        penv,
+		Proxy:      proxy,
+		HTTPFailed: 0,
 	}
 	post.SetUserAgent()
 	for i := range post.Env.Cookies {
 		post.Verbose("COOKIE = ", fmt.Sprintf("%s=%s", post.Env.Cookies[i].Name, post.Env.Cookies[i].Value))
 	}
-	post.HTTPFailed = 0
 	return &post
 }
 
+// Handle makaba's posting response.
 func responseHandler(post *Post, code int32) {
 	if code == OK {
 		post.Env.Status <- true
@@ -58,11 +59,12 @@ func responseHandler(post *Post, code int32) {
 	post.Env.Status <- false
 }
 
+// Handle makaba's captcha id response.
 func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 	switch cerr.ErrorId {
 	case captcha.CAPTCHA_FAIL:
 		post.Log("макаба вернула 0, ошибка получения. Истекли печенюшки?")
-	case captcha.CAPTCHA_HTTP_FAIL:
+	case captcha.CAPTCHA_HTTP_FAIL: // This can be caused by either 2ch server or proxy.
 		post.Log(cerr.Extra)
 		post.HTTPFailed++
 		post.Log(fmt.Sprintf("%d/%d, ошибка подключения, ошибка получения капчи.", post.HTTPFailed, limit))
@@ -79,7 +81,8 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 	post.Env.Status <- false
 }
 
-// Run when cookies is already has been set.
+// Perform posting steps.
+// Should be run only when cookies already has been set.
 func RunPost(post *Post) {
 	failed := func(err error) {
 		post.Log(err)
