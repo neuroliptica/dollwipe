@@ -23,7 +23,7 @@ type File struct {
 }
 
 // Extract extension from filename.
-func getExt(fname string) string {
+func GetExt(fname string) string {
 	for i := len(fname) - 1; i >= 0; i-- {
 		if fname[i] == '.' {
 			return fname[i:]
@@ -37,13 +37,13 @@ func (f *File) RandName() string {
 	rand.Seed(time.Now().UnixNano())
 	var (
 		letters  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321"
-		size     = rand.Int()%40 + 20
+		size     = rand.Int()%20 + 20
 		randname = make([]byte, size)
 	)
 	for i := 0; i < size; i++ {
 		randname[i] = letters[rand.Intn(len(letters))]
 	}
-	return string(randname) + getExt(f.Name)
+	return string(randname) + GetExt(f.Name)
 }
 
 // WipeMode
@@ -88,6 +88,7 @@ var banned = map[string]bool{
 var (
 	useProxy = flag.Bool("proxy", false, "вайпать с проксями.")
 	useSage  = flag.Bool("sage", false, "клеить сажу.")
+	colorize = flag.Bool("color", false, "цветовые маски для картинок.")
 
 	wipeMode       = flag.Uint64("mode", SHRAPNEL, "режим вайпа:\n\t0 - один тред\n\t1 - шрапнель\n\t2 - создание")
 	textMode       = flag.Uint64("text", FROM_FILE, "тексты постов:\n\t0 - брать из файла\n\t1 - дефолтные\n\t2 - без текста\n\t3 - шизобред\n\t4 - из постов")
@@ -131,6 +132,7 @@ type Mode struct {
 type PostSettings struct {
 	Sage         bool
 	UseProxy     bool
+	Colorize     bool
 	FilesPerPost uint8
 	Board        string
 	Thread       string
@@ -353,6 +355,7 @@ func ParseEnv() (*Env, error) {
 		PostSettings: PostSettings{
 			UseProxy:     *useProxy,
 			Sage:         *useSage,
+			Colorize:     *colorize,
 			Thread:       *thread,
 			Board:        *board,
 			FilesPerPost: uint8(math.Min(float64(*files), 4)),
