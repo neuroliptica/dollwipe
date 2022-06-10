@@ -6,6 +6,7 @@ package engine
 import (
 	"crypto/tls"
 	"dollwipe/captcha"
+	"dollwipe/content"
 	"dollwipe/env"
 	"dollwipe/network"
 	"encoding/base64"
@@ -251,6 +252,26 @@ func (post *Post) MakeParamsMap() (map[string]string, error) {
 	return params, nil
 }
 
+func colorize(file *env.File) []byte {
+	ext := env.GetExt(file.Name)
+	var (
+		err  error
+		cont []byte
+	)
+	switch ext {
+	case ".png":
+		cont, err = content.PngColorize(file.Content)
+	case ".jpg":
+		cont, err = content.JpegColorize(file.Content)
+	default:
+		break
+	}
+	if err != nil {
+		return file.Content
+	}
+	return cont
+}
+
 // Build files map to pass them in multipart request.
 // Total size always will be <= 2 * 10^7 bytes (slightly less, than 20MB).
 func (post *Post) MakeFilesMap() (map[string][]byte, error) {
@@ -268,11 +289,17 @@ func (post *Post) MakeFilesMap() (map[string][]byte, error) {
 			break
 		}
 		file := post.Env.Files[(l+i)%len(post.Env.Files)]
-		if len(file.Content) > limit {
+		cont := file.Content
+
+		// If we do coloring pics.
+		if post.Env.Colorize {
+			cont = colorize(&file)
+		}
+		if len(cont) > limit {
 			continue
 		}
-		limit -= len(file.Content)
-		files[file.RandName()] = file.Content
+		limit -= len(cont)
+		files[file.RandName()] = cont
 		n++
 	}
 	if n == 0 {
