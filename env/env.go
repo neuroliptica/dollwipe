@@ -329,9 +329,7 @@ func (env *Env) parseCookies() {
 	case "hk":
 		path = "./res/config/cookie-hk.json"
 	case "life":
-		//path = "./res/config/cookie-life.json"
-		env.Cookies = make([]*http.Cookie, 0)
-		return
+		path = "./res/config/cookie-life.json"
 	default:
 		log.Fatal("неизвестный домен!")
 	}
