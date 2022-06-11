@@ -77,6 +77,7 @@ func main() {
 			if uint64(lenv.PostsOk+lenv.PostsFailed) == used {
 				break
 			}
+			time.Sleep(time.Second * 2)
 		}
 		log.Printf("Успешно отправлено - %d; всего отправлено - %d.", lenv.PostsOk, lenv.PostsOk+lenv.PostsFailed)
 		lenv.PostsOk, lenv.PostsFailed = 0, 0

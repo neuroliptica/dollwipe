@@ -14,7 +14,7 @@ import (
 )
 
 // Timeout in seconds between two GET requests to RuCaptcha servers.
-const cTimeout = 3
+const cTimeout = 1
 
 // RuCaptcha API response struct.
 type RuCaptcha struct {
