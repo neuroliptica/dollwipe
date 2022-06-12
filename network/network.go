@@ -98,7 +98,7 @@ func SendGet(link string) ([]byte, error) {
 // Otherwise use nil.
 func PerformReq(req *http.Request, transport *http.Transport) (*http.Response, error) {
 	client := &http.Client{
-		Timeout: time.Second * 10,
+		Timeout: time.Second * 20,
 	}
 	if transport != nil {
 		client.Transport = transport

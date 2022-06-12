@@ -159,6 +159,7 @@ type Env struct {
 	Key string
 
 	Logger  chan string // Global synced logger.
+	Filter  chan string // Global synced proxy filter.
 	Verbose bool
 
 	Status               chan bool // True if post send, false if failed.
@@ -366,6 +367,7 @@ func ParseEnv() (*Env, error) {
 		Content: new(Content),
 		Key:     *antiCaptchaKey,
 		Logger:  make(chan string, *bufsize),
+		Filter:  make(chan string, *bufsize),
 		Status:  make(chan bool, *bufsize),
 		Verbose: *verbose,
 		Domain:  *domain,

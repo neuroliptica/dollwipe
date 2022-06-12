@@ -16,7 +16,7 @@ import (
 var Posts map[string]*Post
 
 // How many times proxy can fail HTTP request to captcha before get deleted.
-const limit = 5
+const limit = 1
 
 func InitPost(penv *env.Env, proxy network.Proxy) *Post {
 	post := Post{
@@ -40,10 +40,10 @@ func responseHandler(post *Post, code int32) {
 	switch code {
 	case ERROR_BANNED:
 		post.Log("прокси забанена, удаляю.")
-		delete(Posts, post.Proxy.Addr)
+		post.Env.Filter <- post.Proxy.Addr
 	case ERROR_ACCESS_DENIED:
 		post.Log("доступ заблокирован, удаляю.")
-		delete(Posts, post.Proxy.Addr)
+		post.Env.Filter <- post.Proxy.Addr
 	case ERROR_CLOSED:
 		post.Log("тред закрыт, маладца.")
 		if post.Env.WipeMode == env.SINGLE {
@@ -70,7 +70,7 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 		post.Log(fmt.Sprintf("%d/%d, ошибка подключения, ошибка получения капчи.", post.HTTPFailed, limit))
 		if post.HTTPFailed >= limit {
 			post.Log("прокся исчерпала попытки, удаляю.")
-			delete(Posts, post.Proxy.Addr)
+			post.Env.Filter <- post.Proxy.Addr
 		}
 	case captcha.CAPTCHA_NEED_CHECK:
 		post.Log("макаба вернула NEED_CHECK. Я пока не знаю, как на это реагировать!")

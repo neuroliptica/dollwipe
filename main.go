@@ -17,6 +17,13 @@ func logger(lenv *env.Env) {
 	}
 }
 
+// Isolated bad proxies filter.
+func filter(lenv *env.Env) {
+	for v := range lenv.Filter {
+		delete(engine.Posts, v)
+	}
+}
+
 // Isolated goroutine for statistics.
 func counter(lenv *env.Env) {
 	// TODO: should use mutex to prevent shit increment btw.
@@ -36,6 +43,7 @@ func main() {
 		log.Fatal(err)
 	}
 	go logger(lenv)
+	go filter(lenv)
 	go counter(lenv)
 
 	// Init posts. Also if we do not use proxy, "localhost" will be count as a proxy in proxy map.
