@@ -224,6 +224,22 @@ class Extra : GUI.Frame {
     }
 }
 
+class Buffer : GUI.SpinButtonFrame {
+    public Buffer() {
+        base("Буфер", true, 0, Gtk.Orientation.HORIZONTAL, 0, 65536, 1);
+
+        set_margin(10, 10);
+    }
+}
+
+class ProxyFailLimit : GUI.SpinButtonFrame {
+    public ProxyFailLimit() {
+        base("Лимит на проксю", true, 0, Gtk.Orientation.HORIZONTAL, 1, 100, 1);
+
+        set_margin(10, 10);
+    }
+}
+
 class Init {
     public int wipe_mode;
     public int text_mode;
@@ -249,6 +265,9 @@ class Init {
 
     public bool verbose;
     public bool need_color;
+
+    public int buffer;
+    public int limit;
 
     private string[] banned = {
         "rm",
@@ -323,6 +342,10 @@ class Init {
             command += " -v";
         if (need_color)
             command += " -color";
+        if (buffer > 0)
+            command += @" -buffer $buffer";
+        if (limit > 1)
+            command += @" -limit $limit";
 
         stdout.printf("%s\n", command);
         Posix.system(command);
@@ -427,6 +450,14 @@ class KukloGUI : GLib.Object {
         Gtk.Box extra_box = create_hbox_with_parent(true, 0, right_vbox, LeftPanedBoxes.WIDTH, -1);
         var extra         = new Extra();
         extra.add_parent(extra_box);
+
+        // buffsize and proxy fail limit
+        Gtk.Box lim_box = create_hbox_with_parent(true, 0, right_vbox, LeftPanedBoxes.WIDTH, -1);
+        var bufsize     = new Buffer();
+        var fail_limit  = new ProxyFailLimit();
+
+        bufsize.add_parent(lim_box);
+        fail_limit.add_parent(lim_box);
         // =================== /RIGHT =================
 
         main_window.show_all();
@@ -462,6 +493,9 @@ class KukloGUI : GLib.Object {
 
             init.verbose    = extra.need_verbose();
             init.need_color = extra.need_color();
+
+            init.buffer = bufsize.get_int_value();
+            init.limit  = fail_limit.get_int_value();
 
             if (!init.validate())
                 return;
