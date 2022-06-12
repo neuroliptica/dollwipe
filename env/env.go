@@ -91,7 +91,7 @@ var (
 	colorize = flag.Bool("color", false, "цветовые маски для картинок.")
 
 	wipeMode       = flag.Uint64("mode", SHRAPNEL, "режим вайпа:\n\t0 - один тред\n\t1 - шрапнель\n\t2 - создание")
-	textMode       = flag.Uint64("text", FROM_FILE, "тексты постов:\n\t0 - брать из файла\n\t1 - дефолтные\n\t2 - без текста\n\t3 - шизобред\n\t4 - из постов")
+	textMode       = flag.Uint64("text", FROM_FILE, "тексты постов:\n\t0 - брать из файла\n\t1 - без текста\n\t2 - шизобред\n\t3 - из постов\n\t4 - дефолтные")
 	antiCaptcha    = flag.Uint64("captcha", RUCAPTCHA, "антикапча:\n\t0 - RuCaptcha\n\t...")
 	antiCaptchaKey = flag.String("key", "", "ключ API антикапчи.")
 

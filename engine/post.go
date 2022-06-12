@@ -27,6 +27,7 @@ const (
 
 // Makaba's posting error codes.
 const (
+	ERROR_TOO_FAST        = -8
 	ERROR_CLOSED          = -7
 	ERROR_BANNED          = -6
 	ERROR_INVALID_CAPTCHA = -5
