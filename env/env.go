@@ -110,6 +110,7 @@ var (
 	timeout = flag.Uint64("timeout", 0, "перерыв между проходами (сек.)")
 
 	bufsize = flag.Uint64("buffer", 0, "размер буфера каналов.")
+	limit   = flag.Uint64("limit", 1, "макс. число ошибок соединения для прокси перед удалением.")
 	verbose = flag.Bool("v", false, "доп. логи для отладки.")
 
 	domain = flag.String("domain", "life", "зеркало.\n\thk\n\tlife")
@@ -161,6 +162,9 @@ type Env struct {
 	Logger  chan string // Global synced logger.
 	Filter  chan string // Global synced proxy filter.
 	Verbose bool
+
+	// How many times proxy can fail HTTP request to captcha before get deleted.
+	FailedConnectionsLimit uint64
 
 	Status               chan bool // True if post send, false if failed.
 	PostsOk, PostsFailed int       // Counter
@@ -369,8 +373,10 @@ func ParseEnv() (*Env, error) {
 		Logger:  make(chan string, *bufsize),
 		Filter:  make(chan string, *bufsize),
 		Status:  make(chan bool, *bufsize),
-		Verbose: *verbose,
-		Domain:  *domain,
+
+		FailedConnectionsLimit: *limit,
+		Verbose:                *verbose,
+		Domain:                 *domain,
 	}
 	if banned[env.Board] {
 		return nil, fmt.Errorf("извини, но эту доску вайпать нельзя, она защищена магическим полем. Такие дела!")

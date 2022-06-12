@@ -89,7 +89,7 @@ type Post struct {
 
 	CaptchaId, CaptchaValue string
 	Env                     *env.Env
-	HTTPFailed              uint32 // Failed HTTP requests counter.
+	HTTPFailed              uint64 // Failed HTTP requests counter.
 }
 
 // General logging purpose method.
