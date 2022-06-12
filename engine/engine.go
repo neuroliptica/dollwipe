@@ -43,7 +43,7 @@ func responseHandler(post *Post, code int32) {
 			post.Log("больше не могу постить в этот тред, завершаюсь.")
 			os.Exit(0)
 		}
-	case ERROR_INVALID_CAPTCHA:
+	case ERROR_INVALID_CAPTCHA, ERROR_TOO_FAST:
 		break
 	default:
 		post.Log(fmt.Sprintf("неизвестный код = %d; Я пока не знаю, как на это реагировать!", code))
@@ -70,8 +70,6 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 			post.Log("прокся исчерпала попытки, удаляю.")
 			post.Env.Filter <- post.Proxy.Addr
 		}
-	case ERROR_TOO_FAST:
-		break
 	case captcha.CAPTCHA_NEED_CHECK:
 		post.Log("макаба вернула NEED_CHECK. Я пока не знаю, как на это реагировать!")
 		post.Log("если вы видите это, то сообщите моему разработчику, пожалуйста!")
