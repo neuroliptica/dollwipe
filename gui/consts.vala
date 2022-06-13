@@ -27,4 +27,7 @@ class Chooser {
     public static int SMARGIN = 10;
 }
 
+[CCode(cname = "pixbuf", cheader_filename = "res/header.h")]
+public extern Gdk.Pixbuf pixbuf();
+
 } // Consts

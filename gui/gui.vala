@@ -361,7 +361,9 @@ class KukloGUI : GLib.Object {
         Gtk.Paned main_vpaned = create_vpaned();
         main_window.add(main_vpaned);
 
-        Gtk.Image header = new Gtk.Image.from_file("./res/header.png");
+        Gtk.Image header = new Gtk.Image.from_pixbuf(pixbuf());
+
+        //Gtk.Image header = new Gtk.Image.from_file("./res/header.png");
         main_vpaned.pack1(header, false, false);
 
         Gtk.Paned settings_hpaned = create_hpaned(); 
@@ -370,8 +372,8 @@ class KukloGUI : GLib.Object {
         Gtk.Box left_vbox = create_vbox(false, 0);
         Gtk.Box right_vbox = create_vbox(false, 0);
 
-        settings_hpaned.pack1(left_vbox, false, false);
-        settings_hpaned.pack2(right_vbox, true, false);
+        settings_hpaned.pack1(left_vbox, true, false);
+        settings_hpaned.pack2(right_vbox, false, false);
 
         // =================== LEFT ====================
         // mode/proxymode
