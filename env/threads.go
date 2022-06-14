@@ -88,13 +88,13 @@ func getPostsTexts(board string) ([]string, error) {
 		failed = 0
 	)
 	for _, thread := range catalog.Threads {
-		go func() {
-			t, err := getAllPosts(board, thread.Num)
+		go func(id string) {
+			t, err := getAllPosts(board, id)
 			if err != nil {
 				ch <- nil
 			}
 			ch <- t
-		}()
+		}(thread.Num)
 	}
 	for _, _ = range catalog.Threads {
 		t := <-ch
