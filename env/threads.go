@@ -96,7 +96,7 @@ func getPostsTexts(board string) ([]string, error) {
 			ch <- t
 		}(thread.Num)
 	}
-	for _, _ = range catalog.Threads {
+	for range catalog.Threads {
 		t := <-ch
 		if t == nil {
 			failed++

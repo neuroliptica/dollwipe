@@ -267,7 +267,7 @@ func colorize(file *env.File) []byte {
 	default:
 		break
 	}
-	if err != nil {
+	if err != nil || cont == nil {
 		return file.Content
 	}
 	return cont
