@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	hkKey   = "07IFkGaPtry7mAxrnFzTs7kG"
+	hkKey   = "cf_clearance"
 	lifeKey = "cf_clearance"
 )
 
@@ -21,7 +21,7 @@ type CookieLife struct {
 
 type CookieHk struct {
 	Key   string
-	Value string `json:"07IFkGaPtry7mAxrnFzTs7kG"`
+	Value string `json:"cf_clearance"`
 }
 
 func CookieParse(dir, domain string) ([]*http.Cookie, error) {

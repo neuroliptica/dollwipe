@@ -36,7 +36,8 @@ const (
 
 const (
 	CAPTCHA_API = "/api/captcha/2chcaptcha/"
-	POST_API    = "/makaba/posting.fcgi?json=1"
+	POST_API    = "/user/posting"
+	//POST_API    = "/makaba/posting.fcgi?json=1"
 )
 
 // TODO: more user agents, also move them to file.
@@ -52,8 +53,8 @@ type MakabaResponse interface {
 
 // Posted successfully.
 type MakabaOk struct {
-	Status string
 	Num    int32
+	Result int32
 }
 
 func (r *MakabaOk) Code() int32 {
@@ -61,25 +62,29 @@ func (r *MakabaOk) Code() int32 {
 }
 
 func (r *MakabaOk) Message() string {
-	if r.Status == "Redirect" {
-		return "OK, тред создан."
-	} else {
-		return fmt.Sprintf("OK, пост %d отправлен.", r.Num)
-	}
+	//if r.Status == "Redirect" {
+	//	return "OK, тред создан."
+	//} else {
+	//	return fmt.Sprintf("OK, пост %d отправлен.", r.Num)
+	//}
+	return fmt.Sprintf("OK, пост %d отправлен.", r.Num)
 }
 
 // Posting falied.
 type MakabaFail struct {
-	ErrorCode int32 `json:"Error"`
-	Reason    string
+	Error struct {
+		Code    int32
+		Message string
+	}
+	Result int32
 }
 
 func (r *MakabaFail) Code() int32 {
-	return r.ErrorCode
+	return r.Error.Code
 }
 
 func (r *MakabaFail) Message() string {
-	return r.Reason
+	return r.Error.Message
 }
 
 // Single posting unit.
@@ -318,7 +323,7 @@ func (post *Post) SendPost(params map[string]string, files map[string][]byte) (M
 		link = "https://2ch." + post.Env.Domain + POST_API
 		ok   MakabaOk
 		fail MakabaFail
-		form = network.FileForm{"formimages[]", files}
+		form = network.FileForm{"file[]", files}
 	)
 	req, err := network.NewPostMultipartRequest(link, params, &form)
 	if err != nil {
@@ -330,9 +335,9 @@ func (post *Post) SendPost(params map[string]string, files map[string][]byte) (M
 	}
 	post.Verbose("MAKABA RESPONSE = ", string(cont))
 	json.Unmarshal(cont, &ok)
-	if ok.Status == "" {
+	if ok.Num == 0 {
 		json.Unmarshal(cont, &fail)
-		if fail.ErrorCode == 0 {
+		if fail.Error.Code == 0 {
 			return nil, fmt.Errorf("сервер вернул неожиданный ответ.")
 		}
 		return &fail, nil
