@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -50,7 +51,7 @@ func GetRandomThread(board string) (uint64, error) {
 }
 
 func getAllPosts(board string, thread uint64) (*Thread, error) {
-	link := fmt.Sprintf("https://2ch.hk/%s/res/%d.json", board, thread)
+	link := fmt.Sprintf("https://2ch.hk/%s/res/%s.json", board, strconv.FormatUint(thread, 10))
 	cont, err := network.SendGet(link)
 	if err != nil {
 		return nil, err
@@ -58,7 +59,7 @@ func getAllPosts(board string, thread uint64) (*Thread, error) {
 	var posts struct{ Threads []Thread }
 	json.Unmarshal(cont, &posts)
 	if len(posts.Threads) == 0 || len(posts.Threads[0].Posts) == 0 {
-		return nil, fmt.Errorf("%s/%d не удалось получить посты.", board, thread)
+		return nil, fmt.Errorf("%s/%s не удалось получить посты.", board, strconv.FormatUint(thread, 10))
 	}
 	return &(posts.Threads[0]), nil
 }
@@ -74,7 +75,6 @@ func GetRandomPost(board string, thread uint64) (*Comment, error) {
 }
 
 // Will get all posts from all threads on board, in parallel.
-// Content is about to be with the html tags, need replace.
 // TODO: replace the HTML tags in content with the makaba tags.
 func getPostsTexts(board string) ([]string, error) {
 	catalog, err := getAllThreads(board)
