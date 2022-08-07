@@ -13,7 +13,7 @@ import (
 )
 
 type Catalog struct {
-	Threads []struct{ Num string }
+	Threads []struct{ Num uint64 }
 }
 
 type Comment struct {
@@ -39,18 +39,18 @@ func getAllThreads(board string) (*Catalog, error) {
 	return &catalog, nil
 }
 
-func GetRandomThread(board string) (string, error) {
+func GetRandomThread(board string) (uint64, error) {
 	catalog, err := getAllThreads(board)
 	if err != nil {
-		return "", err
+		return uint64(0), err
 	}
 	rand.Seed(time.Now().UnixNano())
 	thread := catalog.Threads[rand.Intn(len(catalog.Threads))]
 	return thread.Num, nil
 }
 
-func getAllPosts(board, thread string) (*Thread, error) {
-	link := fmt.Sprintf("https://2ch.hk/%s/res/%s.json", board, thread)
+func getAllPosts(board string, thread uint64) (*Thread, error) {
+	link := fmt.Sprintf("https://2ch.hk/%s/res/%d.json", board, thread)
 	cont, err := network.SendGet(link)
 	if err != nil {
 		return nil, err
@@ -58,13 +58,12 @@ func getAllPosts(board, thread string) (*Thread, error) {
 	var posts struct{ Threads []Thread }
 	json.Unmarshal(cont, &posts)
 	if len(posts.Threads) == 0 || len(posts.Threads[0].Posts) == 0 {
-		return nil, fmt.Errorf("%s/%s не удалось получить посты.",
-			board, thread)
+		return nil, fmt.Errorf("%s/%d не удалось получить посты.", board, thread)
 	}
 	return &(posts.Threads[0]), nil
 }
 
-func GetRandomPost(board, thread string) (*Comment, error) {
+func GetRandomPost(board string, thread uint64) (*Comment, error) {
 	posts, err := getAllPosts(board, thread)
 	if err != nil {
 		return nil, err
@@ -88,7 +87,7 @@ func getPostsTexts(board string) ([]string, error) {
 		failed = 0
 	)
 	for _, thread := range catalog.Threads {
-		go func(id string) {
+		go func(id uint64) {
 			t, err := getAllPosts(board, id)
 			if err != nil {
 				ch <- nil

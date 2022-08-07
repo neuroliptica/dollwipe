@@ -96,7 +96,7 @@ var (
 	antiCaptchaKey = flag.String("key", "", "ключ API антикапчи.")
 
 	board  = flag.String("board", "b", "доска.")
-	thread = flag.String("thread", "", "ID треда, если вайпаем один тред.")
+	thread = flag.Uint64("thread", 0, "ID треда, если вайпаем один тред.")
 
 	files = flag.Uint64("files", 0, "кол-во прикрепляемых файлов.")
 
@@ -136,7 +136,7 @@ type PostSettings struct {
 	Colorize     bool
 	FilesPerPost uint8
 	Board        string
-	Thread       string
+	Thread       uint64
 }
 
 type Content struct {
@@ -385,10 +385,10 @@ func ParseEnv() (*Env, error) {
 	if _, ok := domains[env.Domain]; !ok {
 		return nil, fmt.Errorf("не смогла распознать домен зеркала: %s", env.Domain)
 	}
-	if env.WipeMode == SINGLE && env.Thread == "" {
+	if env.WipeMode == SINGLE && env.Thread == 0 {
 		return nil, fmt.Errorf("не указан ID треда.")
 	}
-	if env.WipeMode != SINGLE && env.Thread != "" {
+	if env.WipeMode != SINGLE && env.Thread != 0 {
 		return nil, fmt.Errorf("ID треда указан, но режим не SingleThread.")
 	}
 	if env.AntiCaptcha != RUCAPTCHA {

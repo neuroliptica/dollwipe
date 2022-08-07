@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -245,7 +246,7 @@ func (post *Post) MakeParamsMap() (map[string]string, error) {
 		"email":            "",
 		"comment":          post.Env.Captions[rand.Intn(len(post.Env.Captions))],
 		"board":            board,
-		"thread":           thread,
+		"thread":           strconv.FormatUint(thread, 10),
 		"2chcaptcha_id":    post.CaptchaId,
 		"2chcaptcha_value": post.CaptchaValue,
 	}
