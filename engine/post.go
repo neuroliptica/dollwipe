@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"time"
 )
@@ -107,10 +108,9 @@ func (post *Post) Log(msg ...interface{}) {
 
 // Extra logs when -v flag is set.
 func (post *Post) Verbose(msg ...interface{}) {
-	if !post.Env.Verbose {
-		return
+	if post.Env.Verbose {
+		post.Log(msg...)
 	}
-	post.Log(msg...)
 }
 
 // Build custom TLS transport for sending requests with proxy.
@@ -135,9 +135,15 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		req.AddCookie(post.Env.Cookies[i])
 	}
 	req.Header.Add("User-Agent", post.UserAgent)
+	req.Header.Add("Sec-Fetch-Dest", "document")
+	req.Header.Add("Sec-Fetch-Mode", "navigate")
+	req.Header.Add("Sec-Fetch-Site", "none")
+	req.Header.Add("DNT", "1")
+	req.Header.Add("Sec-Fetch-User", "?1")
 
 	// Setting up proxy.
 	if post.Env.UseProxy && post.Proxy.Login != "" && post.Proxy.Pass != "" {
+		//post.Log(post.Proxy.Login, " ", post.Proxy.Pass)
 		credits := post.Proxy.Login + ":" + post.Proxy.Pass
 		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
 		req.Header.Add("Proxy-Authorization", basicAuth)
@@ -145,7 +151,10 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	var transport *http.Transport
 	if post.Env.UseProxy {
 		transport = post.MakeTransport()
+		transport.ProxyConnectHeader = req.Header
 	}
+	dump, _ := httputil.DumpRequest(req, false)
+	post.Verbose(string(dump))
 
 	resp, err := network.PerformReq(req, transport)
 	if err != nil {
@@ -163,7 +172,6 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 // Perform HTTP GET request to url with post's headers, proxy and cookies.
 func (post *Post) SendGet(link string) ([]byte, error) {
 	req, err := http.NewRequest("GET", link, nil)
-	post.Verbose("отправляю HTTP GET запрос на ", link)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось сформировать GET запрос к %s", link)
 	}
@@ -182,7 +190,7 @@ func (post *Post) SetPasscode() {
 
 // Get captcha id from 2ch server and set post.CaptchaId field.
 func (post *Post) SetCaptchaId() *captcha.CaptchaIdError {
-	link := "https://2ch." + post.Env.Domain + CAPTCHA_API + "id"
+	link := "https://2ch." + post.Env.Domain + CAPTCHA_API + "id?board=" + post.Env.Board + "&thread=" + strconv.FormatUint(post.Env.Thread, 10)
 	cont, err := post.SendGet(link)
 	if err != nil {
 		cerr := captcha.NewCaptchaIdError(captcha.CAPTCHA_HTTP_FAIL, err)
@@ -320,6 +328,7 @@ func (post *Post) MakeFilesMap() (map[string][]byte, error) {
 }
 
 func (post *Post) SendPost(params map[string]string, files map[string][]byte) (MakabaResponse, error) {
+	//post.Env.Session.CollectData(params["comment"])
 	var (
 		link = "https://2ch." + post.Env.Domain + POST_API
 		ok   MakabaOk

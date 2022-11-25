@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+const UID = "0"
+
 type File struct {
 	Name    string
 	Content []byte
@@ -124,6 +126,10 @@ var notImplemented = func(x string) error {
 	return fmt.Errorf("%s ещё не реализовано.", x)
 }
 
+//type Metadata struct {
+//	Session submodule.Session
+//}
+
 type Mode struct {
 	WipeMode    uint8
 	AntiCaptcha uint8
@@ -153,6 +159,7 @@ type WipeSettings struct {
 
 type Env struct {
 	Mode
+	//Metadata
 	PostSettings
 	WipeSettings
 	*Content
@@ -355,6 +362,9 @@ func ParseEnv() (*Env, error) {
 			AntiCaptcha: uint8(*antiCaptcha),
 			TextMode:    uint8(*textMode),
 		},
+		//Metadata: Metadata{
+		//	Session: submodule.InitSession(UID),
+		//},
 		PostSettings: PostSettings{
 			UseProxy:     *useProxy,
 			Sage:         *useSage,

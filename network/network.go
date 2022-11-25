@@ -84,12 +84,12 @@ func NewPostMultipartRequest(link string, params map[string]string, files *FileF
 func SendGet(link string) ([]byte, error) {
 	resp, err := http.Get(link)
 	if err != nil {
-		return make([]byte, 0), err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	cont, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return make([]byte, 0), err
+		return nil, err
 	}
 	return cont, nil
 }
@@ -98,7 +98,7 @@ func SendGet(link string) ([]byte, error) {
 // Otherwise use nil.
 func PerformReq(req *http.Request, transport *http.Transport) (*http.Response, error) {
 	client := &http.Client{
-		Timeout: time.Second * 20,
+		Timeout: time.Second * 30,
 	}
 	if transport != nil {
 		client.Transport = transport

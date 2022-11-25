@@ -86,7 +86,6 @@ func RunPost(post *Post) {
 		post.Log(err)
 		post.Env.Status <- false
 	}
-
 	post.Log("получаю id капчи...")
 	cerr := post.SetCaptchaId()
 	if cerr != nil {
