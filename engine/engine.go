@@ -17,7 +17,9 @@ func InitPost(penv *env.Env, proxy network.Proxy) *Post {
 		Proxy:      proxy,
 		HTTPFailed: 0,
 	}
-	post.SetUserAgent()
+	for key, value := range post.Env.Headers {
+		post.Verbose(key, ": ", string(value))
+	}
 	for i := range post.Env.Cookies {
 		post.Verbose("Cookie: ", fmt.Sprintf("%s=%s", post.Env.Cookies[i].Name, post.Env.Cookies[i].Value))
 	}

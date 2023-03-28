@@ -24,6 +24,8 @@ type File struct {
 	Content []byte
 }
 
+type Header string
+
 // Extract extension from filename.
 func GetExt(fname string) string {
 	for i := len(fname) - 1; i >= 0; i-- {
@@ -93,6 +95,7 @@ var (
 	colorize = flag.Bool("color", false, "цветовые маски для картинок.")
 
 	wipeMode       = flag.Uint64("mode", SHRAPNEL, "режим вайпа:\n\t0 - один тред\n\t1 - шрапнель\n\t2 - создание")
+	wait           = flag.Uint64("wait", 20, "ждём секунд печеньки")
 	textMode       = flag.Uint64("text", FROM_FILE, "тексты постов:\n\t0 - брать из файла\n\t1 - без текста\n\t2 - шизобред\n\t3 - из постов\n\t4 - дефолтные")
 	antiCaptcha    = flag.Uint64("captcha", RUCAPTCHA, "антикапча:\n\t0 - RuCaptcha\n\t...")
 	antiCaptchaKey = flag.String("key", "", "ключ API антикапчи.")
@@ -178,6 +181,7 @@ type Env struct {
 
 	Domain  string
 	Cookies []*http.Cookie
+	Headers map[string]Header
 }
 
 // Get all files which we can post from dir folder.
@@ -332,7 +336,7 @@ func (env *Env) parseProxies(dir string) {
 
 // Now we gonna have one cookie for every proxy.
 // This strategy will work only on .life domain btw.
-func (env *Env) parseCookies() {
+func (env *Env) parseCookiesAndHeaders() {
 	var (
 		err  error
 		path string
@@ -411,7 +415,10 @@ func ParseEnv() (*Env, error) {
 	}
 	env.parseCaptions(*capsPath)
 	env.parseProxies(*proxyPath)
-	env.parseCookies()
+	//env.parseCookies()
+	log.Println("получаю печенюшки...")
+	//env.Cookies = ParseCookies("https://2ch.hk/b", time.Second*time.Duration(*wait))
+	env.Cookies, env.Headers = ParseCookies("https://2ch.hk/b", time.Second*time.Duration(*wait))
 
 	return &env, nil
 }

@@ -22,9 +22,6 @@ import (
 
 const (
 	OK = iota
-	//BANNED
-	//FAILED
-	//SOLVER_FAILED
 )
 
 // Makaba's posting error codes.
@@ -41,11 +38,6 @@ const (
 	POST_API    = "/user/posting"
 	//POST_API    = "/makaba/posting.fcgi?json=1"
 )
-
-// TODO: more user agents, also move them to file.
-var userAgents = []string{
-	"Mozilla/5.0 (X11; Linux x86_64; rv:91.0) Gecko/20100101 Firefox/91.0",
-}
 
 // General posting API's response interface.
 type MakabaResponse interface {
@@ -64,11 +56,6 @@ func (r *MakabaOk) Code() int32 {
 }
 
 func (r *MakabaOk) Message() string {
-	//if r.Status == "Redirect" {
-	//	return "OK, тред создан."
-	//} else {
-	//	return fmt.Sprintf("OK, пост %d отправлен.", r.Num)
-	//}
 	return fmt.Sprintf("OK, пост %d отправлен.", r.Num)
 }
 
@@ -130,17 +117,14 @@ func (post *Post) MakeTransport() *http.Transport {
 
 // Perform request with post headers, proxy and cookies.
 func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
-	// Setting up headers.
+	// Setting up cookies.
 	for i := range post.Env.Cookies {
 		req.AddCookie(post.Env.Cookies[i])
 	}
-	req.Header.Add("User-Agent", post.UserAgent)
-	req.Header.Add("Sec-Fetch-Dest", "document")
-	req.Header.Add("Sec-Fetch-Mode", "navigate")
-	req.Header.Add("Sec-Fetch-Site", "none")
-	req.Header.Add("DNT", "1")
-	req.Header.Add("Sec-Fetch-User", "?1")
-
+	// Setting up headers.
+	for key, value := range post.Env.Headers {
+		req.Header.Add(key, string(value))
+	}
 	// Setting up proxy.
 	if post.Env.UseProxy && post.Proxy.Login != "" && post.Proxy.Pass != "" {
 		//post.Log(post.Proxy.Login, " ", post.Proxy.Pass)
@@ -176,12 +160,6 @@ func (post *Post) SendGet(link string) ([]byte, error) {
 		return nil, fmt.Errorf("не удалось сформировать GET запрос к %s", link)
 	}
 	return post.PerformReq(req)
-}
-
-func (post *Post) SetUserAgent() {
-	rand.Seed(time.Now().UnixNano())
-	post.UserAgent = userAgents[rand.Intn(len(userAgents))]
-	post.Verbose("USER-AGENT = ", post.UserAgent)
 }
 
 func (post *Post) SetPasscode() {
@@ -343,7 +321,7 @@ func (post *Post) SendPost(params map[string]string, files map[string][]byte) (M
 	if err != nil {
 		return nil, fmt.Errorf("ошибка отправки запроса: %v", err)
 	}
-	post.Verbose("MAKABA RESPONSE = ", string(cont))
+	post.Verbose("Makaba Response => ", string(cont))
 	json.Unmarshal(cont, &ok)
 	if ok.Num == 0 {
 		json.Unmarshal(cont, &fail)

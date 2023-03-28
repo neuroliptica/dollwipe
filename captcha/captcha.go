@@ -36,15 +36,6 @@ func (e *CaptchaIdError) Error() string {
 	return fmt.Sprintf("%d", e.ErrorId)
 }
 
-// Mapping fail codes to structs.
-//var (
-//	Failed = NewCaptchaError(CAPTCHA_FAIL, nil)
-//	//NeedCheck = NewCaptchaError(CAPTCHA_NEED_CHECK, nil)
-//	//PassCode  = NewCaptchaError(CAPTCHA_PASSCODE, nil)
-//	//PassGone  = NewCaptchaError(CAPTCHA_PASSCODE_EXP, nil)
-//	HTTPFail = NewCaptchaError(CAPTCHA_HTTP_FAIL, nil)
-//)
-
 // General solver function type.
 // Every captcha's solver function should satisfy this signature.
 type Solver = func(img []byte, key string) (string, error)
