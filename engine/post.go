@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	OK = iota
+	WAIT_TIME = 15
+	OK        = iota
 )
 
 // Makaba's posting error codes.
@@ -78,9 +79,9 @@ func (r *MakabaFail) Message() string {
 
 // Single posting unit.
 type Post struct {
-	Proxy     network.Proxy
-	Cookie    []*http.Cookie
-	UserAgent string
+	Proxy   network.Proxy
+	Cookies []*http.Cookie
+	Headers map[string]env.Header
 
 	CaptchaId, CaptchaValue string
 	Env                     *env.Env
@@ -89,7 +90,7 @@ type Post struct {
 
 // General logging purpose method.
 func (post *Post) Log(msg ...interface{}) {
-	post.Env.Logger <- fmt.Sprintf("%s %s",
+	post.Env.Logger <- fmt.Sprintf("%s: %s",
 		post.Proxy.String(), fmt.Sprint(msg...))
 }
 
@@ -98,6 +99,15 @@ func (post *Post) Verbose(msg ...interface{}) {
 	if post.Env.Verbose {
 		post.Log(msg...)
 	}
+}
+
+// Set up custom headers and cookies for posting unit.
+// More in env/cookies.go
+func (post *Post) SetHeaders() {
+	// post.Proxy should be used here.
+	post.Cookies, post.Headers = env.GetHeaders(
+		"https://2ch.hk/b",
+		time.Second*time.Duration(WAIT_TIME))
 }
 
 // Build custom TLS transport for sending requests with proxy.
@@ -118,11 +128,11 @@ func (post *Post) MakeTransport() *http.Transport {
 // Perform request with post headers, proxy and cookies.
 func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	// Setting up cookies.
-	for i := range post.Env.Cookies {
-		req.AddCookie(post.Env.Cookies[i])
+	for i := range post.Cookies {
+		req.AddCookie(post.Cookies[i])
 	}
 	// Setting up headers.
-	for key, value := range post.Env.Headers {
+	for key, value := range post.Headers {
 		req.Header.Add(key, string(value))
 	}
 	// Setting up proxy.

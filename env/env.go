@@ -11,7 +11,6 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -19,12 +18,14 @@ import (
 
 const UID = "0"
 
-type File struct {
-	Name    string
-	Content []byte
-}
+type (
+	File struct {
+		Name    string
+		Content []byte
+	}
 
-type Header string
+	Header string
+)
 
 // Extract extension from filename.
 func GetExt(fname string) string {
@@ -129,10 +130,6 @@ var notImplemented = func(x string) error {
 	return fmt.Errorf("%s ещё не реализовано.", x)
 }
 
-//type Metadata struct {
-//	Session submodule.Session
-//}
-
 type Mode struct {
 	WipeMode    uint8
 	AntiCaptcha uint8
@@ -161,8 +158,8 @@ type WipeSettings struct {
 }
 
 type Env struct {
-	Mode
 	//Metadata
+	Mode
 	PostSettings
 	WipeSettings
 	*Content
@@ -179,9 +176,10 @@ type Env struct {
 	Status               chan bool // True if post send, false if failed.
 	PostsOk, PostsFailed int       // Counter
 
-	Domain  string
-	Cookies []*http.Cookie
-	Headers map[string]Header
+	Domain string
+	// Will be set up locally in post.go:post.Post struct for every proxy.
+	// Cookies []*http.Cookie
+	// Headers map[string]Header
 }
 
 // Get all files which we can post from dir folder.
@@ -268,7 +266,7 @@ func getProxies(dir string) ([]network.Proxy, error) {
 func (env *Env) parseFiles(dir string) {
 	env.Files = make([]File, 0)
 	if env.FilesPerPost != 0 {
-		log.Println("инициализирую картинки.")
+		log.Println("инициализирую картинки...")
 		cont, err := getFiles(dir)
 		if err == nil {
 			env.Files = cont
@@ -297,7 +295,7 @@ func (env *Env) parseCaptions(dir string) {
 		log.Println("SCHIZO not implemented yet")
 		os.Exit(0)
 	case FROM_POSTS:
-		log.Printf("получаю каталог тредов /%s/", env.Board)
+		log.Printf("получаю каталог тредов /%s/...", env.Board)
 		caps, err := getPostsTexts(env.Board)
 		if err != nil {
 			log.Printf("ошибка получения постов: %v", err)
@@ -307,7 +305,7 @@ func (env *Env) parseCaptions(dir string) {
 		}
 		env.Captions = caps
 	case FROM_FILE:
-		log.Println("инициализирую тексты постов.")
+		log.Println("инициализирую тексты постов...")
 		caps, err := getCaptions(dir)
 		if err == nil {
 			env.Captions = caps
@@ -324,7 +322,7 @@ func (env *Env) parseCaptions(dir string) {
 // Check for validness and parse all proxies to env.Proxies with []network.Proxy type.
 func (env *Env) parseProxies(dir string) {
 	if env.UseProxy {
-		log.Println("инициализирую прокси.")
+		log.Println("инициализирую прокси...")
 		proxies, err := getProxies(dir)
 		if err != nil {
 			log.Println(err)
@@ -334,27 +332,26 @@ func (env *Env) parseProxies(dir string) {
 	}
 }
 
-// Now we gonna have one cookie for every proxy.
-// This strategy will work only on .life domain btw.
-func (env *Env) parseCookiesAndHeaders() {
-	var (
-		err  error
-		path string
-	)
-	switch env.Domain {
-	case "hk":
-		path = "./res/config/cookie-hk.json"
-	case "life":
-		path = "./res/config/cookie-life.json"
-	default:
-		log.Fatal("неизвестный домен!")
-	}
-	cookies, err := CookieParse(path, env.Domain)
-	if err != nil {
-		log.Fatal("фатальная ошибка, не смогла получить куки: ", err)
-	}
-	env.Cookies = cookies
-}
+// DEPRICATED
+//func (env *Env) parseCookiesAndHeaders() {
+//	var (
+//		err  error
+//		path string
+//	)
+//	switch env.Domain {
+//	case "hk":
+//		path = "./res/config/cookie-hk.json"
+//	case "life":
+//		path = "./res/config/cookie-life.json"
+//	default:
+//		log.Fatal("неизвестный домен!")
+//	}
+//	cookies, err := CookieParse(path, env.Domain)
+//	if err != nil {
+//		log.Fatal("фатальная ошибка, не смогла получить куки: ", err)
+//	}
+//	env.Cookies = cookies
+//}
 
 func ParseEnv() (*Env, error) {
 	flag.Parse()
@@ -366,9 +363,6 @@ func ParseEnv() (*Env, error) {
 			AntiCaptcha: uint8(*antiCaptcha),
 			TextMode:    uint8(*textMode),
 		},
-		//Metadata: Metadata{
-		//	Session: submodule.InitSession(UID),
-		//},
 		PostSettings: PostSettings{
 			UseProxy:     *useProxy,
 			Sage:         *useSage,
@@ -397,13 +391,13 @@ func ParseEnv() (*Env, error) {
 	}
 
 	if _, ok := domains[env.Domain]; !ok {
-		return nil, fmt.Errorf("не смогла распознать домен зеркала: %s", env.Domain)
+		return nil, fmt.Errorf("ошибка, не смогла распознать домен зеркала: %s", env.Domain)
 	}
 	if env.WipeMode == SINGLE && env.Thread == 0 {
-		return nil, fmt.Errorf("не указан ID треда.")
+		return nil, fmt.Errorf("ошибка, не указан ID треда.")
 	}
 	if env.WipeMode != SINGLE && env.Thread != 0 {
-		return nil, fmt.Errorf("ID треда указан, но режим не SingleThread.")
+		return nil, fmt.Errorf("ошибка, ID треда указан, но режим не SingleThread.")
 	}
 	if env.AntiCaptcha != RUCAPTCHA {
 		return nil, notImplemented("антикапча, кроме RuCaptcha")
@@ -415,10 +409,9 @@ func ParseEnv() (*Env, error) {
 	}
 	env.parseCaptions(*capsPath)
 	env.parseProxies(*proxyPath)
-	//env.parseCookies()
-	log.Println("получаю печенюшки...")
-	//env.Cookies = ParseCookies("https://2ch.hk/b", time.Second*time.Duration(*wait))
-	env.Cookies, env.Headers = ParseCookies("https://2ch.hk/b", time.Second*time.Duration(*wait))
+
+	// log.Println("получаю печенюшки...")
+	//env.Cookies, env.Headers = GetHeaders("https://2ch.hk/b", time.Second*time.Duration(*wait))
 
 	return &env, nil
 }

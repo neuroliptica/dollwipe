@@ -23,8 +23,9 @@ func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
 }
 
 // TODO: extract request headers.
+// TODO: make request optionally using proxy.
 // Create browser instance, pass cloudflare, get cookies and headers.
-func ParseCookies(url string, wait time.Duration) ([]*http.Cookie, map[string]Header) {
+func GetHeaders(url string, wait time.Duration) ([]*http.Cookie, map[string]Header) {
 	browser := rod.New().Timeout(time.Minute).MustConnect()
 	defer browser.MustClose()
 
@@ -38,11 +39,10 @@ func ParseCookies(url string, wait time.Duration) ([]*http.Cookie, map[string]He
 	time.Sleep(wait)
 
 	// Request to the captcha -> 200; then extract headers and cookies
-	wait_ := page.WaitEvent(&e)
+	waitRequest := page.WaitEvent(&e)
 	page.MustNavigate("https://2ch.hk/api/captcha/2chcaptcha/id?board=b&thread=0")
 	page.MustWaitNavigation()
-	time.Sleep(wait)
-	wait_()
+	waitRequest()
 
 	fmt.Println(utils.Dump(
 		e.Request.URL,

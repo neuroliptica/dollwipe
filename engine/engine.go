@@ -17,11 +17,17 @@ func InitPost(penv *env.Env, proxy network.Proxy) *Post {
 		Proxy:      proxy,
 		HTTPFailed: 0,
 	}
-	for key, value := range post.Env.Headers {
+	post.Log("получаю печенюшки...")
+	// Will create browser instance, should be parallel.
+	// Also set up proxy for browser instance.
+	post.SetHeaders()
+	for key, value := range post.Headers {
 		post.Verbose(key, ": ", string(value))
 	}
-	for i := range post.Env.Cookies {
-		post.Verbose("Cookie: ", fmt.Sprintf("%s=%s", post.Env.Cookies[i].Name, post.Env.Cookies[i].Value))
+	for i := range post.Cookies {
+		post.Verbose("Cookie: ", fmt.Sprintf("%s=%s",
+			post.Cookies[i].Name,
+			post.Cookies[i].Value))
 	}
 	return &post
 }
@@ -34,22 +40,23 @@ func responseHandler(post *Post, code int32) {
 	}
 	switch code {
 	case ERROR_BANNED:
-		post.Log("прокси забанена, удаляю.")
+		post.Log("прокся забанена, удаляю.")
 		post.Env.Filter <- post.Proxy.Addr
 	case ERROR_ACCESS_DENIED:
-		post.Log("доступ заблокирован, удаляю.")
+		post.Log("доступ заблокирован, удаляю проксю.")
 		post.Env.Filter <- post.Proxy.Addr
 	case ERROR_CLOSED:
 		post.Log("тред закрыт, маладца.")
 		if post.Env.WipeMode == env.SINGLE {
-			post.Log("больше не могу постить в этот тред, завершаюсь.")
+			post.Log("больше не могу постить в этот тред, пора на покой.")
 			os.Exit(0)
 		}
 	case ERROR_INVALID_CAPTCHA, ERROR_TOO_FAST:
 		break
 	default:
-		post.Log(fmt.Sprintf("неизвестный код = %d; Я пока не знаю, как на это реагировать!", code))
+		post.Log(fmt.Sprintf("неизвестный код = %d; меня пока не научили на это правильно реагировать!", code))
 		// TODO: отправлять Message() и Code() как issue.
+		// Но для этого нужна сторонняя инфа?
 	}
 	post.Env.Status <- false
 }
@@ -58,7 +65,7 @@ func responseHandler(post *Post, code int32) {
 func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 	switch cerr.ErrorId {
 	case captcha.CAPTCHA_FAIL:
-		post.Log("макаба вернула 0, ошибка получения. Истекли печенюшки?")
+		post.Log("макаба вернула 0, ошибка получения. Может истекли печенюшки?")
 	case captcha.CAPTCHA_HTTP_FAIL: // This can be caused by either 2ch server or proxy.
 		if post.Env.UseProxy {
 			post.Verbose(cerr.Extra)
@@ -66,17 +73,14 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 			post.Log(cerr.Extra)
 		}
 		post.HTTPFailed++
-		post.Log(fmt.Sprintf("%d/%d, ошибка подключения, ошибка получения капчи.",
+		post.Log(fmt.Sprintf("%d/%d, не удалось подключиться, ошибка получения капчи.",
 			post.HTTPFailed, post.Env.FailedConnectionsLimit))
 		if post.HTTPFailed >= post.Env.FailedConnectionsLimit {
 			post.Log("прокся исчерпала попытки, удаляю.")
 			post.Env.Filter <- post.Proxy.Addr
 		}
-	case captcha.CAPTCHA_NEED_CHECK:
-		post.Log("макаба вернула NEED_CHECK. Я пока не знаю, как на это реагировать!")
-		post.Log("если вы видите это, то сообщите моему разработчику, пожалуйста!")
 	default:
-		post.Log(fmt.Sprintf("%d неизвестная ошибка при получении id капчи!", cerr.ErrorId))
+		post.Log(fmt.Sprintf("%d неизвестная ошибка при получении капчи!", cerr.ErrorId))
 	}
 	post.Env.Status <- false
 }
@@ -91,7 +95,7 @@ func RunPost(post *Post) {
 	post.Log("получаю id капчи...")
 	cerr := post.SetCaptchaId()
 	if cerr != nil {
-		post.Log("не удалось получить id капчи.")
+		post.Log("не смогла получить id капчи.")
 		captchaIdErrorHandler(post, cerr)
 		return
 	}
@@ -106,7 +110,7 @@ func RunPost(post *Post) {
 
 	params, err := post.MakeParamsMap()
 	if err != nil { // This will appear only if we can't get a random thread.
-		post.Log("не удалось получить случайный тред.")
+		post.Log("не смогла получить случайный тред.")
 		failed(err)
 		return
 	}
@@ -114,14 +118,14 @@ func RunPost(post *Post) {
 	if post.Env.FilesPerPost != 0 {
 		files, err = post.MakeFilesMap()
 		if err != nil {
-			post.Log("не удалось выбрать файлы.")
+			post.Log("не смогла выбрать файлы.")
 			failed(err)
 			return
 		}
 	}
 	response, err := post.SendPost(params, files)
 	if err != nil {
-		post.Log("не удалось отправить пост.")
+		post.Log("не смогла отправить пост.")
 		failed(err)
 		return
 	}
