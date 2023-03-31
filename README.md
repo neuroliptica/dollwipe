@@ -17,21 +17,15 @@
 - (!) Нормальный обход клауды.
 - Вайп с пасскодом.
 - Остальные антикапчи (XCaptcha, AntiCaptcha).
-- Распознавание капчи (OCR [сильно под вопросом])
+- Распознавание капчи.
 
 ## Собрать
-Надо Go >= 1.18
+Надо Go >= 1.18 для движка и Vala + Gtk3 для графического интерфейса.
+
 ```bash
 $ git clone https://github.com/neuroliptica/dollwipe.git
 $ cd dollwipe
-$ go build
-```
-
-## Собрать GUI
-Надо Vala + GTK3
-```bash
-$ cd dollwipe/gui
-$ valac -o dollgui --Xcc="-I./" gui.vala fails.vala utils.vala base.vala consts.vala --pkg gtk+-3.0 --pkg posix
+$ make
 ```
 
 ## License
