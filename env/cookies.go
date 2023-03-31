@@ -3,13 +3,11 @@
 package env
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
-	"github.com/go-rod/rod/lib/utils"
 )
 
 // Cast proto.NetworkCookie to http.Cookie.
@@ -44,9 +42,9 @@ func GetHeaders(url string, wait time.Duration) ([]*http.Cookie, map[string]Head
 	page.MustWaitNavigation()
 	waitRequest()
 
-	fmt.Println(utils.Dump(
-		e.Request.URL,
-		e.Request.Headers))
+	//fmt.Println(utils.Dump(
+	//	e.Request.URL,
+	//	e.Request.Headers))
 
 	cookies := page.MustCookies(url)
 	headers := make(map[string]Header, 0)

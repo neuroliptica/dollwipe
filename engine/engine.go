@@ -11,16 +11,36 @@ import (
 	"os"
 )
 
-func InitPost(penv *env.Env, proxy network.Proxy) *Post {
+type InitPostResponse struct {
+	PostPtr *Post
+	Proxy   network.Proxy
+}
+
+func (r InitPostResponse) Address() string {
+	return r.Proxy.Addr
+}
+
+func (r InitPostResponse) Post() *Post {
+	return r.PostPtr
+}
+
+func InitPost(penv *env.Env, proxy network.Proxy, ch chan<- InitPostResponse) {
+	response := InitPostResponse{nil, proxy}
 	post := Post{
 		Env:        penv,
 		Proxy:      proxy,
 		HTTPFailed: 0,
+		Headers:    make(map[string]env.Header, 0),
 	}
 	post.Log("получаю печенюшки...")
 	// Will create browser instance, should be parallel.
 	// Also set up proxy for browser instance.
 	post.SetHeaders()
+	if len(post.Headers) == 0 {
+		ch <- response
+		return
+	}
+	response.PostPtr = &post
 	for key, value := range post.Headers {
 		post.Verbose(key, ": ", string(value))
 	}
@@ -29,7 +49,7 @@ func InitPost(penv *env.Env, proxy network.Proxy) *Post {
 			post.Cookies[i].Name,
 			post.Cookies[i].Value))
 	}
-	return &post
+	ch <- response
 }
 
 // Handle makaba's posting response.

@@ -53,10 +53,34 @@ func main() {
 		localhost := network.Proxy{"localhost", nil, "", ""}
 		lenv.Proxies = append(lenv.Proxies, localhost) // So mod won't be zero
 	}
+
+	// This part will spawn goroutine for every Post instance.
+	// Then 'll wait until Posts initialization will finish.
+	initResponse := make(chan engine.InitPostResponse)
+	initDone := make(chan bool)
+	go func(resp <-chan engine.InitPostResponse, done chan<- bool) {
+		failed := 0
+		for v := range resp {
+			if v.Post() == nil {
+				failed++
+			} else {
+				Posts[v.Address()] = v.Post()
+			}
+			log.Printf("OK: %3d; FAIL: %3d",
+				len(Posts), failed)
+			if failed+len(Posts) == len(lenv.Proxies) {
+				done <- true
+				return
+			}
+		}
+	}(initResponse, initDone)
+
 	for _, proxy := range lenv.Proxies {
-		post := engine.InitPost(lenv, proxy)
-		Posts[proxy.Addr] = post
+		go engine.InitPost(lenv, proxy, initResponse)
 	}
+	// Block until initialization is done.
+	<-initDone
+
 	if lenv.UseProxy {
 		log.Printf("проксей инициализировано - %d.", len(lenv.Proxies))
 	}
