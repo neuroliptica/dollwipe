@@ -90,7 +90,7 @@ type Post struct {
 
 // General logging purpose method.
 func (post *Post) Log(msg ...interface{}) {
-	post.Env.Logger <- fmt.Sprintf("%s: %s",
+	post.Env.Logger <- fmt.Sprintf("%s: %2s",
 		post.Proxy.String(), fmt.Sprint(msg...))
 }
 

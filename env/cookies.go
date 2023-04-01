@@ -3,7 +3,6 @@
 package env
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -42,8 +41,8 @@ func GetHeaders(url string, wait time.Duration) ([]*http.Cookie, map[string]Head
 	page.MustNavigate("https://2ch.hk/api/captcha/2chcaptcha/id?board=b&thread=0")
 	page.MustWaitNavigation()
 	// time.Sleep(wait)
-	var s string
-	fmt.Scan(&s)
+	//var s string
+	//fmt.Scan(&s)
 	waitRequest()
 
 	//fmt.Println(utils.Dump(

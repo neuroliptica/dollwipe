@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -33,7 +34,10 @@ func (p Proxy) NoProxy() bool {
 }
 
 func (p Proxy) String() string {
-	return p.Addr
+	if p.Addr == "localhost" {
+		return p.Addr
+	}
+	return strings.Split(p.Addr, "//")[1]
 }
 
 // Build new HTTP POST request to link with params in query.
