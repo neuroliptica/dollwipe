@@ -13,8 +13,24 @@ import (
 // Cast proto.NetworkCookie to http.Cookie.
 func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
 	cookies := make([]*http.Cookie, 0)
+	samesite := map[string]http.SameSite{
+		"None":   3,
+		"Strict": 2,
+		"Lax":    1,
+	}
 	for i := range pCookies {
-		cookie := http.Cookie{Name: pCookies[i].Name, Value: pCookies[i].Value}
+		cookie := http.Cookie{
+			Name:     pCookies[i].Name,
+			Value:    pCookies[i].Value,
+			HttpOnly: pCookies[i].HTTPOnly,
+			Secure:   pCookies[i].Secure,
+			Domain:   pCookies[i].Domain,
+			Path:     pCookies[i].Path,
+			Expires:  pCookies[i].Expires.Time(),
+		}
+		if val, ok := samesite[string(pCookies[i].SameSite)]; ok {
+			cookie.SameSite = val
+		}
 		cookies = append(cookies, &cookie)
 	}
 	return cookies
@@ -54,14 +70,18 @@ func GetHeaders(url string, wait time.Duration) ([]*http.Cookie, map[string]Head
 	//for key, value := range e.Request.Headers {
 	//	headers[key] = Header(value.String())
 	//}
-	headers["Accept"] = Header("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")
+	headers["Accept"] = Header("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
 	headers["Accept-Encoding"] = Header("gzip, deflate, br")
-	headers["Accept-Language"] = Header("en")
+	headers["Accept-Language"] = Header("en-US,en;q=0.5")
+	headers["DNT"] = Header("1")
+	//headers["TE"] = Header("trailers")
 	headers["Sec-Fetch-Dest"] = Header("document")
 	headers["Sec-Fetch-Mode"] = Header("navigate")
 	headers["Sec-Fetch-Site"] = Header("none")
 	headers["Sec-Fetch-User"] = Header("?1")
+	//headers["Connection"] = Header("keep-alive")
 	headers["Upgrade-Insecure-Requests"] = Header("1")
 	headers["User-Agent"] = Header("Mozilla/5.0 (Macintosh; Intel Mac OS X 11_0_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
+
 	return protoToHttp(cookies), headers
 }
