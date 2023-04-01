@@ -23,13 +23,17 @@ func filter(bad <-chan string, posts map[string]*engine.Post) {
 	}
 }
 
-func counter(lenv *env.Env) {
-	// TODO: should use mutex to prevent shit increment btw.
-	for v := range lenv.Status {
+const (
+	POST_FAILED = iota
+	POST_SEND
+)
+
+func counter(status <-chan bool, sum chan<- int) {
+	for v := range status {
 		if v {
-			lenv.PostsOk++
+			sum <- POST_SEND
 		} else {
-			lenv.PostsFailed++
+			sum <- POST_FAILED
 		}
 	}
 }
@@ -41,7 +45,9 @@ func main() {
 		log.Fatal(err)
 	}
 	go logger(lenv.Logger)
-	go counter(lenv)
+
+	postsUpdate := make(chan int)
+	go counter(lenv.Status, postsUpdate)
 
 	// Init posts. Also if we do not use proxy, "localhost" will be count as a proxy in proxy map.
 	// Despite this, it will never be set as a normal proxy.
@@ -106,13 +112,19 @@ func main() {
 		for j := uint64(0); j < used; j++ {
 			go engine.RunPost(Posts[alive[j]])
 		}
-		for uint64(lenv.PostsOk+lenv.PostsFailed) != used {
-			time.Sleep(time.Second * 2)
+
+		postsOk, postsFail := 0, 0
+		for uint64(postsOk+postsFail) != used {
+			update := <-postsUpdate
+			if update == POST_SEND {
+				postsOk++
+			} else {
+				postsFail++
+			}
 		}
 		lenv.Logger <- fmt.Sprintf(
 			"Успешно отправлено - %d; всего отправлено - %d.",
-			lenv.PostsOk, lenv.PostsOk+lenv.PostsFailed)
-		lenv.PostsOk, lenv.PostsFailed = 0, 0
+			postsOk, postsOk+postsFail)
 		if len(Posts) == 0 {
 			lenv.Logger <- fmt.Sprintf("все проксичи умерли, помянем.")
 			os.Exit(0)
