@@ -4,6 +4,7 @@ package content
 
 import (
 	"bytes"
+	"dollwipe/env"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -98,4 +99,24 @@ func colorize(r io.Reader, decoder Decoder) (image.Image, error) {
 		}
 	}
 	return mutable, nil
+}
+
+func Colorize(file *env.File) []byte {
+	ext := env.GetExt(file.Name)
+	var (
+		err  error
+		cont []byte
+	)
+	switch ext {
+	case ".png":
+		cont, err = PngColorize(file.Content)
+	case ".jpg":
+		cont, err = JpegColorize(file.Content)
+	default:
+		break
+	}
+	if err != nil || cont == nil {
+		return file.Content
+	}
+	return cont
 }

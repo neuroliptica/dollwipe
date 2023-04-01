@@ -3,6 +3,7 @@
 package env
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -40,6 +41,9 @@ func GetHeaders(url string, wait time.Duration) ([]*http.Cookie, map[string]Head
 	waitRequest := page.WaitEvent(&e)
 	page.MustNavigate("https://2ch.hk/api/captcha/2chcaptcha/id?board=b&thread=0")
 	page.MustWaitNavigation()
+	// time.Sleep(wait)
+	var s string
+	fmt.Scan(&s)
 	waitRequest()
 
 	//fmt.Println(utils.Dump(
@@ -48,8 +52,17 @@ func GetHeaders(url string, wait time.Duration) ([]*http.Cookie, map[string]Head
 
 	cookies := page.MustCookies(url)
 	headers := make(map[string]Header, 0)
-	for key, value := range e.Request.Headers {
-		headers[key] = Header(value.String())
-	}
+	//for key, value := range e.Request.Headers {
+	//	headers[key] = Header(value.String())
+	//}
+	headers["Accept"] = Header("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")
+	headers["Accept-Encoding"] = Header("gzip, deflate, br")
+	headers["Accept-Language"] = Header("en")
+	headers["Sec-Fetch-Dest"] = Header("document")
+	headers["Sec-Fetch-Mode"] = Header("navigate")
+	headers["Sec-Fetch-Site"] = Header("none")
+	headers["Sec-Fetch-User"] = Header("?1")
+	headers["Upgrade-Insecure-Requests"] = Header("1")
+	headers["User-Agent"] = Header("Mozilla/5.0 (Macintosh; Intel Mac OS X 11_0_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
 	return protoToHttp(cookies), headers
 }

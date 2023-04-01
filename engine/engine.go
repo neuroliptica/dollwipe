@@ -8,9 +8,11 @@ import (
 	"dollwipe/env"
 	"dollwipe/network"
 	"fmt"
+	"net/http"
 	"os"
 )
 
+// Because we also need to store the proxy.
 type InitPostResponse struct {
 	PostPtr *Post
 	Proxy   network.Proxy
@@ -31,12 +33,13 @@ func InitPost(penv *env.Env, proxy network.Proxy, ch chan<- InitPostResponse) {
 		Proxy:      proxy,
 		HTTPFailed: 0,
 		Headers:    make(map[string]env.Header, 0),
+		Cookies:    make([]*http.Cookie, 0),
 	}
 	post.Log("получаю печенюшки...")
 	// Will create browser instance, should be parallel.
 	// Also set up proxy for browser instance.
-	post.SetHeaders()
-	if len(post.Headers) == 0 {
+	post.GetHeaders()
+	if len(post.Cookies) == 0 {
 		ch <- response
 		return
 	}
@@ -106,7 +109,6 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 }
 
 // Perform posting steps.
-// Should be run only when cookies already has been set.
 func RunPost(post *Post) {
 	failed := func(err error) {
 		post.Log(err)

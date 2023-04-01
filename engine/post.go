@@ -103,7 +103,7 @@ func (post *Post) Verbose(msg ...interface{}) {
 
 // Set up custom headers and cookies for posting unit.
 // More in env/cookies.go
-func (post *Post) SetHeaders() {
+func (post *Post) GetHeaders() {
 	// post.Proxy should be used here.
 	post.Cookies, post.Headers = env.GetHeaders(
 		"https://2ch.hk/b",
@@ -170,10 +170,6 @@ func (post *Post) SendGet(link string) ([]byte, error) {
 		return nil, fmt.Errorf("не удалось сформировать GET запрос к %s", link)
 	}
 	return post.PerformReq(req)
-}
-
-func (post *Post) SetPasscode() {
-	return
 }
 
 // Get captcha id from 2ch server and set post.CaptchaId field.
@@ -255,26 +251,6 @@ func (post *Post) MakeParamsMap() (map[string]string, error) {
 	return params, nil
 }
 
-func colorize(file *env.File) []byte {
-	ext := env.GetExt(file.Name)
-	var (
-		err  error
-		cont []byte
-	)
-	switch ext {
-	case ".png":
-		cont, err = content.PngColorize(file.Content)
-	case ".jpg":
-		cont, err = content.JpegColorize(file.Content)
-	default:
-		break
-	}
-	if err != nil || cont == nil {
-		return file.Content
-	}
-	return cont
-}
-
 // Build files map to pass them in multipart request.
 // Total size always will be <= 2 * 10^7 bytes (slightly less, than 20MB).
 func (post *Post) MakeFilesMap() (map[string][]byte, error) {
@@ -293,10 +269,8 @@ func (post *Post) MakeFilesMap() (map[string][]byte, error) {
 		}
 		file := post.Env.Files[(l+i)%len(post.Env.Files)]
 		cont := file.Content
-
-		// If we do coloring pics.
 		if post.Env.Colorize {
-			cont = colorize(&file)
+			cont = content.Colorize(&file)
 		}
 		if len(cont) > limit {
 			continue

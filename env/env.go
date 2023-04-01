@@ -386,10 +386,10 @@ func ParseEnv() (*Env, error) {
 		Verbose:                *verbose,
 		Domain:                 *domain,
 	}
+
 	if banned[env.Board] {
 		return nil, fmt.Errorf("извини, но эту доску вайпать нельзя, она защищена магическим полем. Такие дела!")
 	}
-
 	if _, ok := domains[env.Domain]; !ok {
 		return nil, fmt.Errorf("ошибка, не смогла распознать домен зеркала: %s", env.Domain)
 	}
@@ -409,9 +409,6 @@ func ParseEnv() (*Env, error) {
 	}
 	env.parseCaptions(*capsPath)
 	env.parseProxies(*proxyPath)
-
-	// log.Println("получаю печенюшки...")
-	//env.Cookies, env.Headers = GetHeaders("https://2ch.hk/b", time.Second*time.Duration(*wait))
 
 	return &env, nil
 }

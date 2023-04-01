@@ -21,3 +21,5 @@ dollwipe
 dollgui
 submodule/
 server/
+config_old
+config_old.go
