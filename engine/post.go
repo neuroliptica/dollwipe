@@ -118,7 +118,8 @@ func (post *Post) MakeTransport() *http.Transport {
 	}
 	if !post.Env.UseProxy {
 		return &http.Transport{
-			TLSClientConfig: config,
+			TLSClientConfig:    config,
+			DisableCompression: true,
 		}
 	}
 	proto := make(map[string]func(string, *tls.Conn) http.RoundTripper)
@@ -160,8 +161,7 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	defer resp.Body.Close()
 	post.Log(resp.Status)
 	cont, err := ioutil.ReadAll(resp.Body)
-	post.Log(string(cont))
-	post.Log(err)
+	post.Verbose(err)
 	if err != nil {
 		return nil, err
 	}

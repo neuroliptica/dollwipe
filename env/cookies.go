@@ -62,7 +62,7 @@ func GetHeaders(url string, wait time.Duration) ([]*http.Cookie, map[string]Head
 
 	// Manually set up, because they won't change.
 	headers["Accept"] = Header("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
-	headers["Accept-Encoding"] = Header("gzip, deflate, br")
+	//headers["Accept-Encoding"] = Header("gzip, debr")
 	headers["Accept-Language"] = Header("en-US,en;q=0.5")
 	headers["DNT"] = Header("1")
 	headers["Sec-Fetch-Dest"] = Header("document")
