@@ -168,18 +168,13 @@ type Env struct {
 
 	Logger  chan string // Global synced logger.
 	Filter  chan string // Global synced proxy filter.
+	Status  chan bool   // True if post send, false if failed.
 	Verbose bool
 
 	// How many times proxy can fail HTTP request to captcha before get deleted.
 	FailedConnectionsLimit uint64
 
-	Status               chan bool // True if post send, false if failed.
-	PostsOk, PostsFailed int       // Counter
-
 	Domain string
-	// Will be set up locally in post.go:post.Post struct for every proxy.
-	// Cookies []*http.Cookie
-	// Headers map[string]Header
 }
 
 // Get all files which we can post from dir folder.

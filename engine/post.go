@@ -113,16 +113,20 @@ func (post *Post) GetHeaders() {
 // Build custom TLS transport for sending requests with proxy.
 func (post *Post) MakeTransport() *http.Transport {
 	config := &tls.Config{
+		MaxVersion:         tls.VersionTLS13,
 		InsecureSkipVerify: true,
 	}
+	if !post.Env.UseProxy {
+		return &http.Transport{
+			TLSClientConfig: config,
+		}
+	}
 	proto := make(map[string]func(string, *tls.Conn) http.RoundTripper)
-
-	transport := &http.Transport{
+	return &http.Transport{
 		Proxy:           http.ProxyURL(post.Proxy.AddrParsed),
 		TLSClientConfig: config,
 		TLSNextProto:    proto,
 	}
-	return transport
 }
 
 // Perform request with post headers, proxy and cookies.
@@ -142,9 +146,8 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
 		req.Header.Add("Proxy-Authorization", basicAuth)
 	}
-	var transport *http.Transport
+	transport := post.MakeTransport()
 	if post.Env.UseProxy {
-		transport = post.MakeTransport()
 		transport.ProxyConnectHeader = req.Header
 	}
 	dump, _ := httputil.DumpRequest(req, false)
@@ -157,6 +160,8 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	defer resp.Body.Close()
 	post.Log(resp.Status)
 	cont, err := ioutil.ReadAll(resp.Body)
+	post.Log(string(cont))
+	post.Log(err)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +182,7 @@ func (post *Post) SetCaptchaId() *captcha.CaptchaIdError {
 	link := "https://2ch." + post.Env.Domain + CAPTCHA_API + "id?board=" + post.Env.Board + "&thread=" + strconv.FormatUint(post.Env.Thread, 10)
 	cont, err := post.SendGet(link)
 	if err != nil {
+		post.Log(err)
 		cerr := captcha.NewCaptchaIdError(captcha.CAPTCHA_HTTP_FAIL, err)
 		return cerr
 	}

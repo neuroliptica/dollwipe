@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -68,6 +69,9 @@ func main() {
 			if v.Post() == nil {
 				failed++
 			} else {
+				sort.Slice(v.Post().Cookies, func(i, j int) bool {
+					return v.Post().Cookies[i].Name < v.Post().Cookies[j].Name
+				})
 				Posts[v.Address()] = v.Post()
 			}
 			lenv.Logger <- fmt.Sprintf(

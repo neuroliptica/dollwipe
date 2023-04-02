@@ -48,9 +48,7 @@ func InitPost(penv *env.Env, proxy network.Proxy, ch chan<- InitPostResponse) {
 		post.Verbose(key, ": ", string(value))
 	}
 	for i := range post.Cookies {
-		post.Verbose("Cookie: ", fmt.Sprintf("%s=%s",
-			post.Cookies[i].Name,
-			post.Cookies[i].Value))
+		post.Verbose("Cookie: ", post.Cookies[i].String())
 	}
 	ch <- response
 }
