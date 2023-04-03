@@ -61,9 +61,9 @@ const (
 // AntiCaptcha
 const (
 	RUCAPTCHA = iota
+	OCR
 	XCAPTCHA
 	ANTICATPCHA
-	OCR
 	PASSCODE
 	MANUAL
 )
@@ -98,7 +98,7 @@ var (
 	wipeMode       = flag.Uint64("mode", SHRAPNEL, "режим вайпа:\n\t0 - один тред\n\t1 - шрапнель\n\t2 - создание")
 	wait           = flag.Uint64("wait", 20, "ждём секунд печеньки")
 	textMode       = flag.Uint64("text", FROM_FILE, "тексты постов:\n\t0 - брать из файла\n\t1 - без текста\n\t2 - шизобред\n\t3 - из постов\n\t4 - дефолтные")
-	antiCaptcha    = flag.Uint64("captcha", RUCAPTCHA, "антикапча:\n\t0 - RuCaptcha\n\t...")
+	antiCaptcha    = flag.Uint64("captcha", OCR, "антикапча:\n\t0 - RuCaptcha\n\t1 - OCR")
 	antiCaptchaKey = flag.String("key", "", "ключ API антикапчи.")
 
 	board  = flag.String("board", "b", "доска.")

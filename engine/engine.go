@@ -121,7 +121,16 @@ func RunPost(post *Post) {
 	}
 
 	post.Log("решаю капчу...")
-	err := post.SolveCaptcha(captcha.NeuralSolver)
+	var solver captcha.Solver
+	switch post.Env.AntiCaptcha {
+	case env.RUCAPTCHA:
+		solver = captcha.RuCaptchaSolver
+	case env.OCR:
+		solver = captcha.NeuralSolver
+	default:
+		solver = captcha.NeuralSolver
+	}
+	err := post.SolveCaptcha(solver)
 	if err != nil {
 		failed(err)
 		return
