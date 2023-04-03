@@ -130,7 +130,7 @@ func (post *Post) MakeTransport() *http.Transport {
 		TLSNextProto:    proto,
 	}
 	// Setting up socks proxy.
-	if post.Proxy.Protocol == "socks5" || post.Proxy.Protocol == "socks4" {
+	if post.Proxy.Protocol[:len(post.Proxy.Protocol)-1] == "socks" {
 		auth := &proxy.Auth{
 			User:     post.Proxy.Login,
 			Password: post.Proxy.Pass,
@@ -211,7 +211,7 @@ func (post *Post) SetCaptchaId() *captcha.CaptchaIdError {
 		return captcha.NewCaptchaIdError(response.Result, nil)
 	}
 	post.CaptchaId = response.Id
-	post.Verbose("CAPTCHA ID RESPONSE = ", response)
+	post.Verbose("Captcha Id Response => ", response)
 	return nil
 }
 

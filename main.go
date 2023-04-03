@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+type (
+	// SingleInitDone struct{}
+	InitDone struct{}
+)
+
 func logger(messages <-chan string) {
 	for msg := range messages {
 		log.Println(msg)
@@ -62,8 +67,10 @@ func main() {
 	// This part will spawn goroutine for every Post instance.
 	// Then 'll wait until Posts initialization will finish.
 	initResponse := make(chan engine.InitPostResponse)
-	initDone := make(chan bool)
-	go func(resp <-chan engine.InitPostResponse, done chan<- bool) {
+	initDone := make(chan InitDone)
+	// singleInitDone := make(chan SingleInitDone)
+
+	go func(resp <-chan engine.InitPostResponse, done chan<- InitDone) {
 		failed := 0
 		for v := range resp {
 			if v.Post() == nil {
@@ -76,8 +83,9 @@ func main() {
 			}
 			lenv.Logger <- fmt.Sprintf(
 				"OK: %3d; FAIL: %3d", len(Posts), failed)
+
 			if failed+len(Posts) == len(lenv.Proxies) {
-				done <- true
+				done <- InitDone{}
 				return
 			}
 		}

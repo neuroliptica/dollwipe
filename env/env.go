@@ -118,7 +118,8 @@ var (
 	limit   = flag.Uint64("limit", 1, "макс. число ошибок соединения для прокси перед удалением.")
 	verbose = flag.Bool("v", false, "доп. логи для отладки.")
 
-	domain = flag.String("domain", "hk", "зеркало.\n\thk\n\tlife")
+	domain     = flag.String("domain", "hk", "зеркало.\n\thk\n\tlife")
+	initAtOnce = flag.Uint64("init", 1, "кол-во параллельно инициализируемых прокси.")
 )
 
 var defaultCaptions = []string{
@@ -174,6 +175,9 @@ type Env struct {
 	FailedConnectionsLimit uint64
 
 	Domain string
+
+	// How many web driver instances will be spawned at once.
+	InitAtOnce uint64
 }
 
 // Get all files which we can post from dir folder.
@@ -358,6 +362,7 @@ func ParseEnv() (*Env, error) {
 		FailedConnectionsLimit: *limit,
 		Verbose:                *verbose,
 		Domain:                 *domain,
+		InitAtOnce:             *initAtOnce,
 	}
 
 	if banned[env.Board] {
