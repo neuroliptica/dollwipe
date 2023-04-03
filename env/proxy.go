@@ -116,6 +116,7 @@ func getProxy(addr string) (proxy network.Proxy, err error) {
 		AddrParsed: u,
 		Login:      login,
 		Pass:       pass,
+		Protocol:   protocol,
 	}
 	return
 }

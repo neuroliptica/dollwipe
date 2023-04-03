@@ -27,6 +27,7 @@ type Proxy struct {
 	AddrParsed *url.URL
 
 	Login, Pass string // If proxy is public, then these fields will be empty.
+	Protocol    string
 }
 
 func (p Proxy) NoProxy() bool {

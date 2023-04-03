@@ -78,8 +78,8 @@ const (
 )
 
 var domains = map[string]bool{
-	"hk":   true,
-	"life": true,
+	"hk": true,
+	// "life": true,
 }
 
 // Block for wipe, sorry.
@@ -109,7 +109,6 @@ var (
 	filesPath = flag.String("file-path", "./res/files/", "директория с файлами.")
 	capsPath  = flag.String("caption-path", "./res/captions.conf", "файл с текстами постов.")
 	proxyPath = flag.String("proxy-path", "./res/proxies.conf", "файл с проксями.")
-	//configPath = flag.String("config-path", "./res/config/cookie-life.json", "файл с печенюшками.\nПри указании домена .hk будет использовать cookie-hk.json\n\t")
 
 	threads = flag.Uint64("t", 1, "кол-во потоков.")
 	iters   = flag.Uint64("i", 1, "кол-во проходов.")
@@ -119,7 +118,7 @@ var (
 	limit   = flag.Uint64("limit", 1, "макс. число ошибок соединения для прокси перед удалением.")
 	verbose = flag.Bool("v", false, "доп. логи для отладки.")
 
-	domain = flag.String("domain", "life", "зеркало.\n\thk\n\tlife")
+	domain = flag.String("domain", "hk", "зеркало.\n\thk\n\tlife")
 )
 
 var defaultCaptions = []string{
@@ -327,27 +326,6 @@ func (env *Env) parseProxies(dir string) {
 	}
 }
 
-// DEPRICATED
-//func (env *Env) parseCookiesAndHeaders() {
-//	var (
-//		err  error
-//		path string
-//	)
-//	switch env.Domain {
-//	case "hk":
-//		path = "./res/config/cookie-hk.json"
-//	case "life":
-//		path = "./res/config/cookie-life.json"
-//	default:
-//		log.Fatal("неизвестный домен!")
-//	}
-//	cookies, err := CookieParse(path, env.Domain)
-//	if err != nil {
-//		log.Fatal("фатальная ошибка, не смогла получить куки: ", err)
-//	}
-//	env.Cookies = cookies
-//}
-
 func ParseEnv() (*Env, error) {
 	flag.Parse()
 	log.SetFlags(log.Ltime)
@@ -384,6 +362,9 @@ func ParseEnv() (*Env, error) {
 
 	if banned[env.Board] {
 		return nil, fmt.Errorf("извини, но эту доску вайпать нельзя, она защищена магическим полем. Такие дела!")
+	}
+	if env.Domain == "life" {
+		return nil, fmt.Errorf("2ch.life support deprecated")
 	}
 	if _, ok := domains[env.Domain]; !ok {
 		return nil, fmt.Errorf("ошибка, не смогла распознать домен зеркала: %s", env.Domain)

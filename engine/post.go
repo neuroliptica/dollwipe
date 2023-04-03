@@ -18,6 +18,8 @@ import (
 	"net/http/httputil"
 	"strconv"
 	"time"
+
+	"golang.org/x/net/proxy"
 )
 
 const (
@@ -118,16 +120,30 @@ func (post *Post) MakeTransport() *http.Transport {
 	}
 	if !post.Env.UseProxy {
 		return &http.Transport{
-			TLSClientConfig:    config,
-			DisableCompression: true,
+			TLSClientConfig: config,
+			//DisableCompression: true,
 		}
 	}
 	proto := make(map[string]func(string, *tls.Conn) http.RoundTripper)
-	return &http.Transport{
-		Proxy:           http.ProxyURL(post.Proxy.AddrParsed),
+	transport := &http.Transport{
 		TLSClientConfig: config,
 		TLSNextProto:    proto,
 	}
+	// Setting up socks proxy.
+	if post.Proxy.Protocol == "socks5" || post.Proxy.Protocol == "socks4" {
+		auth := &proxy.Auth{
+			User:     post.Proxy.Login,
+			Password: post.Proxy.Pass,
+		}
+		if post.Proxy.Protocol == "socks4" {
+			auth = nil
+		}
+		dialer, _ := proxy.SOCKS5("tcp", post.Proxy.String(), auth, proxy.Direct)
+		transport.Dial = dialer.Dial
+	} else {
+		transport.Proxy = http.ProxyURL(post.Proxy.AddrParsed)
+	}
+	return transport
 }
 
 // Perform request with post headers, proxy and cookies.
@@ -140,9 +156,12 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	for key, value := range post.Headers {
 		req.Header.Add(key, string(value))
 	}
-	// Setting up proxy.
-	if post.Env.UseProxy && post.Proxy.Login != "" && post.Proxy.Pass != "" {
-		//post.Log(post.Proxy.Login, " ", post.Proxy.Pass)
+	// Setting up HTTP(s) proxy auth.
+	if post.Env.UseProxy &&
+		post.Proxy.Login != "" &&
+		post.Proxy.Pass != "" &&
+		post.Proxy.Protocol[:len(post.Proxy.Protocol)-1] != "socks" {
+
 		credits := post.Proxy.Login + ":" + post.Proxy.Pass
 		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
 		req.Header.Add("Proxy-Authorization", basicAuth)

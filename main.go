@@ -55,7 +55,7 @@ func main() {
 	// So all the request will be performed through our own ip.
 	var Posts = make(map[string]*engine.Post, 0)
 	if !lenv.UseProxy {
-		localhost := network.Proxy{"localhost", nil, "", ""}
+		localhost := network.Proxy{"localhost", nil, "", "", ""}
 		lenv.Proxies = append(lenv.Proxies, localhost) // So mod won't be zero
 	}
 

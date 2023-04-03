@@ -23,3 +23,4 @@ submodule/
 server/
 config_old
 config_old.go
+proxies_dev.conf
