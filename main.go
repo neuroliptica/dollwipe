@@ -13,8 +13,8 @@ import (
 )
 
 type (
-	// SingleInitDone struct{}
-	InitDone struct{}
+	SingleInitDone struct{}
+	InitDone       struct{}
 )
 
 func logger(messages <-chan string) {
@@ -68,11 +68,11 @@ func main() {
 	// Then 'll wait until Posts initialization will finish.
 	initResponse := make(chan engine.InitPostResponse)
 	initDone := make(chan InitDone)
-	// singleInitDone := make(chan SingleInitDone)
+	singleInitDone := make(chan SingleInitDone)
 
-	go func(resp <-chan engine.InitPostResponse, done chan<- InitDone) {
+	go func() {
 		failed := 0
-		for v := range resp {
+		for v := range initResponse {
 			if v.Post() == nil {
 				failed++
 			} else {
@@ -83,17 +83,31 @@ func main() {
 			}
 			lenv.Logger <- fmt.Sprintf(
 				"OK: %3d; FAIL: %3d", len(Posts), failed)
+			singleInitDone <- SingleInitDone{}
 
 			if failed+len(Posts) == len(lenv.Proxies) {
-				done <- InitDone{}
+				initDone <- InitDone{}
 				return
 			}
 		}
-	}(initResponse, initDone)
+	}()
 
-	for _, proxy := range lenv.Proxies {
-		go engine.InitPost(lenv, proxy, initResponse)
+	// Init partially.
+	for i := 0; i < len(lenv.Proxies); i += int(lenv.InitAtOnce) {
+		launched := 0
+		for j := 0; j < int(lenv.InitAtOnce) && i+j < len(lenv.Proxies); j++ {
+			go engine.InitPost(lenv, lenv.Proxies[i+j], initResponse)
+			launched++
+		}
+		done := 0
+		for _ = range singleInitDone {
+			done++
+			if done == launched {
+				break
+			}
+		}
 	}
+
 	// Block until initialization is done.
 	<-initDone
 
