@@ -1,5 +1,5 @@
 # kuklowipe
-Дочка [вот этого чуда](https://github.com/neuroliptica/traumatic), переписанная с учётом ошибок своего предка. Jetz допилить прокси и хорошо.
+Дочка [вот этого чуда](https://github.com/neuroliptica/traumatic), переписанная с учётом ошибок своего предка.
 
 ## Имеет
 - Простенький графический интерфейс.
@@ -25,7 +25,7 @@
 ```bash
 $ git clone https://github.com/neuroliptica/dollwipe.git
 $ cd dollwipe
-$ make
+$ make build
 ```
 
 ## License
