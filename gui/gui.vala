@@ -20,7 +20,7 @@ class WipeMode : GUI.RadioFrame {
 class AntiCaptcha : GUI.RadioFrame {
     private string[] names = {
         "RuCaptcha",   // 0
-        "XCaptcha",    // 1
+        "Нейронка",    // 1
         "AntiCaptcha", // 2
         "Пасскод"      // 3
        // "Вручную"    // 4
@@ -31,7 +31,7 @@ class AntiCaptcha : GUI.RadioFrame {
         modes = names;
         create_buttons_from_modes();
 
-        buttons[1].set_sensitive(false); // XCaptcha
+        // buttons[1].set_sensitive(false); // OCR
         buttons[2].set_sensitive(false); // AntiCaptcha
         buttons[3].set_sensitive(false); // Passcode
     }
@@ -121,7 +121,7 @@ class StartButton : GUI.Frame {
     public StartButton() {
         base(null, true, 0, Gtk.Orientation.VERTICAL);
 
-        button = new Gtk.Button.with_label("~Nipa!");
+        button = new Gtk.Button.with_label("Огонь, ~desu!");
         button.set_size_request(-1, Button.START_HEIGHT);
         button.set_valign(Gtk.Align.CENTER);
         button.set_margin_end(Button.MARGIN);
@@ -175,8 +175,8 @@ class Timeout : GUI.SpinButtonFrame {
 
 class Domain : GUI.RadioFrame {
     private string[] names = {
-        "2ch.life",
-        "2ch.hk"
+        "2ch.hk",
+        "2ch.life"
     };
 
     public Domain() {
@@ -184,6 +184,7 @@ class Domain : GUI.RadioFrame {
         
         modes = names;
         create_buttons_from_modes();
+        buttons[1].set_sensitive(false);
     }
 }
 
@@ -240,6 +241,15 @@ class ProxyFailLimit : GUI.SpinButtonFrame {
     }
 }
 
+
+class InitAtOnce : GUI.SpinButtonFrame {
+    public InitAtOnce() {
+        base("Инициализовать одновременно", true, 0, Gtk.Orientation.HORIZONTAL, 1, 1000, 1);
+
+        set_margin(10, 10);
+    }
+}
+
 class Init {
     public int wipe_mode;
     public int text_mode;
@@ -268,6 +278,7 @@ class Init {
 
     public int buffer;
     public int limit;
+    public int init_once;
 
     private string[] banned = {
         "rm",
@@ -323,7 +334,7 @@ class Init {
     }
 
     public void init_wipe() {
-        string command = @"./dollwipe -mode $wipe_mode -text $text_mode -board $board -captcha $captcha_mode -files $files -t $threads -i $iters -key $key -domain $domain";
+        string command = @"./dollwipe -mode $wipe_mode -text $text_mode -board $board -captcha $captcha_mode -files $files -t $threads -i $iters -key $key -domain $domain -I $init_once";
         if (need_sage)
             command += " -sage";
         if (need_proxy)
@@ -337,11 +348,11 @@ class Init {
         if (proxy_path != "")
             command += @" -proxy-path $proxy_path";
         if (timeout > 0)
-            command += @" -timeout $timeout";
+            command += @" -T $timeout";
         if (verbose)
             command += " -v";
         if (need_color)
-            command += " -color";
+            command += " -masks";
         if (buffer > 0)
             command += @" -buffer $buffer";
         if (limit > 1)
@@ -460,6 +471,12 @@ class KukloGUI : GLib.Object {
 
         bufsize.add_parent(lim_box);
         fail_limit.add_parent(lim_box);
+
+
+        Gtk.Box init_box = create_hbox_with_parent(true, 0, right_vbox, LeftPanedBoxes.WIDTH, -1);
+        var init_once    = new InitAtOnce();
+
+        init_once.add_parent(init_box);
         // =================== /RIGHT =================
 
         main_window.show_all();
@@ -496,8 +513,9 @@ class KukloGUI : GLib.Object {
             init.verbose    = extra.need_verbose();
             init.need_color = extra.need_color();
 
-            init.buffer = bufsize.get_int_value();
-            init.limit  = fail_limit.get_int_value();
+            init.buffer    = bufsize.get_int_value();
+            init.limit     = fail_limit.get_int_value();
+            init.init_once = init_once.get_int_value();
 
             if (!init.validate())
                 return;
