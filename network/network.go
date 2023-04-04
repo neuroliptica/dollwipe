@@ -5,6 +5,7 @@ package network
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -28,6 +29,8 @@ type Proxy struct {
 
 	Login, Pass string // If proxy is public, then these fields will be empty.
 	Protocol    string
+
+	SessionId int
 }
 
 func (p Proxy) NoProxy() bool {
@@ -39,6 +42,14 @@ func (p Proxy) String() string {
 		return p.Addr
 	}
 	return strings.Split(p.Addr, "//")[1]
+}
+
+// Logging purpose.
+func (p Proxy) StringSid() string {
+	if p.SessionId > 0 {
+		return fmt.Sprintf("%s[sid=%d]", p, p.SessionId)
+	}
+	return p.String()
 }
 
 // Build new HTTP POST request to link with params in query.

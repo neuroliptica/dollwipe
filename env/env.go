@@ -93,7 +93,7 @@ var banned = map[string]bool{
 var (
 	useProxy = flag.Bool("proxy", false, "вайпать с проксями.")
 	useSage  = flag.Bool("sage", false, "клеить сажу.")
-	colorize = flag.Bool("color", false, "цветовые маски для картинок.")
+	colorize = flag.Bool("masks", false, "цветовые маски для картинок.")
 
 	wipeMode       = flag.Uint64("mode", SHRAPNEL, "режим вайпа:\n\t0 - один тред\n\t1 - шрапнель\n\t2 - создание")
 	wait           = flag.Uint64("wait", 20, "ждём секунд печеньки")
@@ -112,14 +112,15 @@ var (
 
 	threads = flag.Uint64("t", 1, "кол-во потоков.")
 	iters   = flag.Uint64("i", 1, "кол-во проходов.")
-	timeout = flag.Uint64("timeout", 0, "перерыв между проходами (сек.)")
+	timeout = flag.Uint64("T", 0, "перерыв между проходами (сек.)")
 
 	bufsize = flag.Uint64("buffer", 0, "размер буфера каналов.")
 	limit   = flag.Uint64("limit", 1, "макс. число ошибок соединения для прокси перед удалением.")
 	verbose = flag.Bool("v", false, "доп. логи для отладки.")
+	domain  = flag.String("domain", "hk", "зеркало.\n\thk\n\tlife (depricated)")
 
-	domain     = flag.String("domain", "hk", "зеркало.\n\thk\n\tlife")
-	initAtOnce = flag.Uint64("init", 1, "кол-во параллельно инициализируемых прокси.")
+	initAtOnce = flag.Uint64("I", 1, "кол-во параллельно инициализируемых прокси.")
+	sessions   = flag.Uint64("s", 1, "кол-во сессий на одну проксю (подробнее в документации).")
 )
 
 var defaultCaptions = []string{
@@ -166,9 +167,9 @@ type Env struct {
 
 	Key string
 
-	Logger  chan string // Global synced logger.
-	Filter  chan string // Global synced proxy filter.
-	Status  chan bool   // True if post send, false if failed.
+	Logger  chan string        // Global synced logger.
+	Filter  chan network.Proxy // Global synced proxy filter.
+	Status  chan bool          // True if post send, false if failed.
 	Verbose bool
 
 	// How many times proxy can fail HTTP request to captcha before get deleted.
@@ -178,6 +179,8 @@ type Env struct {
 
 	// How many web driver instances will be spawned at once.
 	InitAtOnce uint64
+	// Cookie sessions for one proxy.
+	Sessions uint64
 }
 
 // Get all files which we can post from dir folder.
@@ -240,7 +243,7 @@ func getCaptions(dir string) ([]string, error) {
 }
 
 // Get all valid-formated proxies from dir.
-func getProxies(dir string) ([]network.Proxy, error) {
+func getProxies(dir string, sessions int) ([]network.Proxy, error) {
 	result := make([]network.Proxy, 0)
 	proxies, err := getNSplit(dir, "\n")
 	if err != nil {
@@ -252,7 +255,10 @@ func getProxies(dir string) ([]network.Proxy, error) {
 			log.Printf("%s: %v", addr, err)
 			continue
 		}
-		result = append(result, proxy)
+		for i := 0; i < sessions; i++ {
+			result = append(result, proxy)
+			proxy.SessionId++
+		}
 	}
 	if len(result) == 0 {
 		return result, fmt.Errorf("не смогла найти ни одной валидной прокси.")
@@ -321,7 +327,7 @@ func (env *Env) parseCaptions(dir string) {
 func (env *Env) parseProxies(dir string) {
 	if env.UseProxy {
 		log.Println("инициализирую прокси...")
-		proxies, err := getProxies(dir)
+		proxies, err := getProxies(dir, int(env.Sessions))
 		if err != nil {
 			log.Println(err)
 			log.Fatal("ошибка инициализации, не удалось инициализировать прокси, фатальная ошибка.")
@@ -356,15 +362,21 @@ func ParseEnv() (*Env, error) {
 		Content: new(Content),
 		Key:     *antiCaptchaKey,
 		Logger:  make(chan string, *bufsize),
-		Filter:  make(chan string, *bufsize),
+		Filter:  make(chan network.Proxy, *bufsize),
 		Status:  make(chan bool, *bufsize),
 
 		FailedConnectionsLimit: *limit,
 		Verbose:                *verbose,
 		Domain:                 *domain,
 		InitAtOnce:             *initAtOnce,
+		Sessions:               *sessions,
 	}
-
+	if env.InitAtOnce == 0 {
+		return nil, fmt.Errorf("ошибка, -init должен быть больше нуля.")
+	}
+	if env.Sessions == 0 {
+		return nil, fmt.Errorf("ошибка, -s должен быть больше нуля.")
+	}
 	if banned[env.Board] {
 		return nil, fmt.Errorf("извини, но эту доску вайпать нельзя, она защищена магическим полем. Такие дела!")
 	}
@@ -380,8 +392,8 @@ func ParseEnv() (*Env, error) {
 	if env.WipeMode != SINGLE && env.Thread != 0 {
 		return nil, fmt.Errorf("ошибка, ID треда указан, но режим не SingleThread.")
 	}
-	if env.AntiCaptcha != RUCAPTCHA {
-		return nil, notImplemented("антикапча, кроме RuCaptcha")
+	if env.AntiCaptcha != RUCAPTCHA && env.AntiCaptcha != OCR {
+		return nil, notImplemented("антикапча, кроме RuCaptcha или OCR")
 	}
 
 	env.parseFiles(*filesPath)

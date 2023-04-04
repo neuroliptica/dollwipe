@@ -23,7 +23,7 @@ func logger(messages <-chan string) {
 	}
 }
 
-func filter(bad <-chan string, posts map[string]*engine.Post) {
+func filter(bad <-chan network.Proxy, posts map[network.Proxy]*engine.Post) {
 	for proxy := range bad {
 		delete(posts, proxy)
 	}
@@ -58,9 +58,9 @@ func main() {
 	// Init posts. Also if we do not use proxy, "localhost" will be count as a proxy in proxy map.
 	// Despite this, it will never be set as a normal proxy.
 	// So all the request will be performed through our own ip.
-	var Posts = make(map[string]*engine.Post, 0)
+	var Posts = make(map[network.Proxy]*engine.Post, 0)
 	if !lenv.UseProxy {
-		localhost := network.Proxy{"localhost", nil, "", "", ""}
+		localhost := network.Proxy{"localhost", nil, "", "", "", 0}
 		lenv.Proxies = append(lenv.Proxies, localhost) // So mod won't be zero
 	}
 
@@ -79,7 +79,7 @@ func main() {
 				sort.Slice(v.Post().Cookies, func(i, j int) bool {
 					return v.Post().Cookies[i].Name < v.Post().Cookies[j].Name
 				})
-				Posts[v.Address()] = v.Post()
+				Posts[v.Proxy] = v.Post()
 			}
 			lenv.Logger <- fmt.Sprintf(
 				"OK: %3d; FAIL: %3d", len(Posts), failed)
@@ -105,14 +105,14 @@ func main() {
 
 	for i := uint64(0); i < lenv.Iters; i++ {
 		var (
-			alive = make([]string, 0)
+			alive = make([]network.Proxy, 0)
 			used  = uint64(0)
 			need  = uint64(math.Min(float64(len(Posts)), float64(lenv.Threads)))
 			shift = need * i                  // If threads < proxies, then we choose proxy to launch with shift.
 			mod   = uint64(len(lenv.Proxies)) // Cycle array index.
 		)
 		for j := shift % mod; used < need; j = (j + 1) % mod {
-			proxy := lenv.Proxies[j].Addr
+			proxy := lenv.Proxies[j]
 			if _, ok := Posts[proxy]; ok {
 				alive = append(alive, proxy)
 				used++

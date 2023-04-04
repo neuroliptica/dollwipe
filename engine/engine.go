@@ -62,10 +62,10 @@ func responseHandler(post *Post, code int32) {
 	switch code {
 	case ERROR_BANNED:
 		post.Log("прокся забанена, удаляю.")
-		post.Env.Filter <- post.Proxy.Addr
+		post.Env.Filter <- post.Proxy
 	case ERROR_ACCESS_DENIED:
 		post.Log("доступ заблокирован, удаляю проксю.")
-		post.Env.Filter <- post.Proxy.Addr
+		post.Env.Filter <- post.Proxy
 	case ERROR_CLOSED:
 		post.Log("тред закрыт, маладца.")
 		if post.Env.WipeMode == env.SINGLE {
@@ -98,7 +98,7 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 			post.HTTPFailed, post.Env.FailedConnectionsLimit))
 		if post.HTTPFailed >= post.Env.FailedConnectionsLimit {
 			post.Log("прокся исчерпала попытки, удаляю.")
-			post.Env.Filter <- post.Proxy.Addr
+			post.Env.Filter <- post.Proxy
 		}
 	default:
 		post.Log(fmt.Sprintf("%d неизвестная ошибка при получении капчи!", cerr.ErrorId))
