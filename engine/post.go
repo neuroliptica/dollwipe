@@ -166,7 +166,7 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
 		req.Header.Add("Proxy-Authorization", basicAuth)
 	}
-	transport := post.MakeTransport()
+	var transport *http.Transport // post.MakeTransport()
 	if post.Env.UseProxy {
 		transport.ProxyConnectHeader = req.Header
 	}
