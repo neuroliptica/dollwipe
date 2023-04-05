@@ -4,7 +4,6 @@
 package engine
 
 import (
-	"crypto/tls"
 	"dollwipe/captcha"
 	"dollwipe/content"
 	"dollwipe/env"
@@ -18,8 +17,6 @@ import (
 	"net/http/httputil"
 	"strconv"
 	"time"
-
-	"golang.org/x/net/proxy"
 )
 
 const (
@@ -112,40 +109,6 @@ func (post *Post) GetHeaders() {
 		time.Second*time.Duration(WAIT_TIME))
 }
 
-// Build custom TLS transport for sending requests with proxy.
-func (post *Post) MakeTransport() *http.Transport {
-	config := &tls.Config{
-		MaxVersion:         tls.VersionTLS13,
-		InsecureSkipVerify: true,
-	}
-	if !post.Env.UseProxy {
-		return &http.Transport{
-			TLSClientConfig: config,
-			//DisableCompression: true,
-		}
-	}
-	proto := make(map[string]func(string, *tls.Conn) http.RoundTripper)
-	transport := &http.Transport{
-		TLSClientConfig: config,
-		TLSNextProto:    proto,
-	}
-	// Setting up socks proxy.
-	if post.Proxy.Protocol[:len(post.Proxy.Protocol)-1] == "socks" {
-		auth := &proxy.Auth{
-			User:     post.Proxy.Login,
-			Password: post.Proxy.Pass,
-		}
-		if post.Proxy.Protocol == "socks4" {
-			auth = nil
-		}
-		dialer, _ := proxy.SOCKS5("tcp", post.Proxy.String(), auth, proxy.Direct)
-		transport.Dial = dialer.Dial
-	} else {
-		transport.Proxy = http.ProxyURL(post.Proxy.AddrParsed)
-	}
-	return transport
-}
-
 // Perform request with post headers, proxy and cookies.
 func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	// Setting up cookies.
@@ -158,15 +121,15 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	}
 	// Setting up HTTP(s) proxy auth.
 	if post.Env.UseProxy &&
-		post.Proxy.Login != "" &&
-		post.Proxy.Pass != "" &&
-		post.Proxy.Protocol[:len(post.Proxy.Protocol)-1] != "socks" {
+		post.Proxy.AuthNeed() &&
+		post.Proxy.ProtocolType() != "socks" {
 
 		credits := post.Proxy.Login + ":" + post.Proxy.Pass
 		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
 		req.Header.Add("Proxy-Authorization", basicAuth)
 	}
-	var transport *http.Transport // post.MakeTransport()
+
+	var transport *http.Transport
 	if post.Env.UseProxy {
 		transport.ProxyConnectHeader = req.Header
 	}

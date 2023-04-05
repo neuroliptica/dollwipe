@@ -1,10 +1,11 @@
 // network.go: helping network utils, which separated from Post.
-// E.g. create new request, new multipart request, etc.
+// E.g. create new request, new multipart request, net TLS transport, etc.
 
 package network
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"mime/multipart"
@@ -12,11 +13,13 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"golang.org/x/net/proxy"
 )
 
 // Struct for passing files in multipart form.
 // FormName is corresponding to <name=FormName>
-// Files is corresponding to pairs of (filename, content).
+// Files is corresponding to the pairs of (filename, content).
 type FileForm struct {
 	FormName string
 	Files    map[string][]byte
@@ -33,10 +36,27 @@ type Proxy struct {
 	SessionId int
 }
 
+// Default value indicates no proxy.
 func (p Proxy) NoProxy() bool {
 	return p.Addr == "localhost"
 }
 
+// Check if auth is need.
+func (p Proxy) AuthNeed() bool {
+	return p.Login != "" && p.Pass != ""
+}
+
+// Separate Http(s) and Socks proxies.
+func (p Proxy) ProtocolType() string {
+	switch p.Protocol {
+	case "http", "https":
+		return p.Protocol
+	default:
+		return "socks"
+	}
+}
+
+// Stringer interface instance.
 func (p Proxy) String() string {
 	if p.Addr == "localhost" {
 		return p.Addr
@@ -44,7 +64,7 @@ func (p Proxy) String() string {
 	return strings.Split(p.Addr, "//")[1]
 }
 
-// Logging purpose.
+// Logging purpose, if -s flag is set.
 func (p Proxy) StringSid() string {
 	if p.SessionId > 0 {
 		return fmt.Sprintf("%s[sid=%d]", p, p.SessionId)
@@ -52,7 +72,41 @@ func (p Proxy) StringSid() string {
 	return p.String()
 }
 
-// Build new HTTP POST request to link with params in query.
+// Build custom TLS transport for sending requests with proxy.
+func MakeTransport(p Proxy) *http.Transport {
+	config := &tls.Config{
+		MaxVersion:         tls.VersionTLS13,
+		InsecureSkipVerify: true,
+	}
+	if p.NoProxy() {
+		return &http.Transport{
+			TLSClientConfig: config,
+			//DisableCompression: true,
+		}
+	}
+	proto := make(map[string]func(string, *tls.Conn) http.RoundTripper)
+	transport := &http.Transport{
+		TLSClientConfig: config,
+		TLSNextProto:    proto,
+	}
+	// Setting up socks proxy.
+	if p.ProtocolType() == "socks" {
+		auth := &proxy.Auth{
+			User:     p.Login,
+			Password: p.Pass,
+		}
+		if p.Protocol == "socks4" {
+			auth = nil
+		}
+		dialer, _ := proxy.SOCKS5("tcp", p.String(), auth, proxy.Direct)
+		transport.Dial = dialer.Dial
+	} else {
+		transport.Proxy = http.ProxyURL(p.AddrParsed)
+	}
+	return transport
+}
+
+// Build new Http Post request to the link with params in query.
 func NewPostRequest(link string, params map[string]string) (*http.Request, error) {
 	query := url.Values{}
 	for key, value := range params {
@@ -65,8 +119,7 @@ func NewPostRequest(link string, params map[string]string) (*http.Request, error
 	return req, nil
 }
 
-// Build new HTTP POST request with multipart-form data body.
-// Files should be passed as the single FileForm instance pointer.
+// Build new Http Post request with multipart-form data body.
 func NewPostMultipartRequest(link string, params map[string]string, files *FileForm) (*http.Request, error) {
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
@@ -96,7 +149,7 @@ func NewPostMultipartRequest(link string, params map[string]string, files *FileF
 	return req, nil
 }
 
-// Build HTTP GET request, perform it and return response body.
+// Build Http Get request, perform it and return response body.
 func SendGet(link string) ([]byte, error) {
 	resp, err := http.Get(link)
 	if err != nil {
@@ -110,8 +163,7 @@ func SendGet(link string) ([]byte, error) {
 	return cont, nil
 }
 
-// Extra transport pointer should be passed if we want to set up proxy.
-// Otherwise use nil.
+// Perform request using transport, transport can be nil if not required.
 func PerformReq(req *http.Request, transport *http.Transport) (*http.Response, error) {
 	client := &http.Client{
 		Timeout: time.Second * 30,
