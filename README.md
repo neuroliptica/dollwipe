@@ -19,15 +19,6 @@
 - Вайп с пасскодом.
 - Остальные антикапчи (XCaptcha, AntiCaptcha).
 
-## Собрать
-Надо Go >= 1.18 для движка и Vala + Gtk3 для графического интерфейса.
-
-```bash
-$ git clone https://github.com/neuroliptica/dollwipe.git
-$ cd dollwipe
-$ make build
-```
-
 ## License
 MIT
 
