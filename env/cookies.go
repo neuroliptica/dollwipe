@@ -3,11 +3,18 @@
 package env
 
 import (
+	"dollwipe/network"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+)
+
+const (
+	captchaApi = "https://2ch.hk/api/captcha/2chcaptcha/id?board=b&thread=0"
+	mainPage   = "https://2ch.hk/b"
 )
 
 // Cast proto.NetworkCookie to http.Cookie.
@@ -36,41 +43,71 @@ func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
 	return cookies
 }
 
-// TODO: proxy support.
-// Create browser instance, pass cloudflare, get cookies and headers.
-func GetHeaders(url string, wait time.Duration) ([]*http.Cookie, map[string]Header) {
-	browser := rod.New().Timeout(time.Minute).MustConnect()
-	defer browser.MustClose()
+func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Cookie, error) {
+	browser := rod.New().Timeout(30 * time.Second).MustConnect()
+	defer browser.Close()
 
 	page := browser.MustPage("")
+	router := page.HijackRequests()
+	defer router.Stop()
 
-	var e proto.NetworkRequestWillBeSent
+	router.MustAdd("*", func(ctx *rod.Hijack) {
+		client := http.Client{
+			Transport: network.MakeTransport(p),
+			Timeout:   30 * time.Second,
+		}
+		ctx.LoadResponse(&client, true)
+	})
 
-	// Passing Cloudflare
-	page.MustNavigate(url)
+	go router.Run()
+
+	err := page.Navigate(mainPage)
+	if err != nil {
+		return nil, err
+	}
 	page.MustWaitNavigation()
 	time.Sleep(wait)
 
-	// Request to the captcha -> 200; then extract cookies.
-	waitRequest := page.WaitEvent(&e)
-	page.MustNavigate("https://2ch.hk/api/captcha/2chcaptcha/id?board=b&thread=0")
-	page.MustWaitNavigation()
-	waitRequest()
+	//var e proto.NetworkRequestWillBeSent
+	//waitRequest := page.WaitEvent(&e)
 
-	cookies := page.MustCookies(url)
-	headers := make(map[string]Header, 0)
+	err = page.Navigate(captchaApi)
+	if err != nil {
+		return nil, err
+	}
+	page.MustWaitLoad()
+	//time.Sleep(time.Second * 10)
+	//waitRequest()
 
-	// Manually set up, because they won't change.
-	headers["Accept"] = Header("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
-	//headers["Accept-Encoding"] = Header("gzip, debr")
-	headers["Accept-Language"] = Header("en-US,en;q=0.5")
-	headers["DNT"] = Header("1")
-	headers["Sec-Fetch-Dest"] = Header("document")
-	headers["Sec-Fetch-Mode"] = Header("navigate")
-	headers["Sec-Fetch-Site"] = Header("none")
-	headers["Sec-Fetch-User"] = Header("?1")
-	headers["Upgrade-Insecure-Requests"] = Header("1")
-	headers["User-Agent"] = Header("Mozilla/5.0 (Macintosh; Intel Mac OS X 11_0_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36")
+	cookies, err := page.Cookies([]string{captchaApi})
+	for _, i := range cookies {
+		fmt.Println(i.Value)
+	}
+	if err != nil {
+		return nil, err
+	}
 
-	return protoToHttp(cookies), headers
+	return protoToHttp(cookies), nil
+}
+
+// Create browser instance, pass cloudflare, get cookies and headers.
+func GetCookiesAndHeaders(p network.Proxy, wait time.Duration) ([]*http.Cookie, map[string]Header, error) {
+	cookies, err := MakeRequestWithMiddleware(p, wait)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	headers := map[string]Header{
+		"Accept":                    Header("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"),
+		"Accept-Language":           Header("en-US,en;q=0.5"),
+		"DNT":                       Header("1"),
+		"Sec-Fetch-Dest":            Header("document"),
+		"Sec-Fetch-Mode":            Header("navigate"),
+		"Sec-Fetch-Site":            Header("none"),
+		"Sec-Fetch-User":            Header("?1"),
+		"Upgrade-Insecure-Requests": Header("1"),
+		"User-Agent":                Header("Mozilla/5.0 (Macintosh; Intel Mac OS X 11_0_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"),
+	}
+	//headers["Accept-Encoding"] = Header("gzip, deflate, br")
+	return cookies, headers, nil
 }

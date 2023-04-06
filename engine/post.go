@@ -1,4 +1,4 @@
-// post.go: main Post struct and it's methods.
+// post.go: main Post struct and it's methods. It's like a single posting unit.
 // Post struct encapsulates in itself all posting methods and data for the single post.
 
 package engine
@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	WAIT_TIME = 15
+	WAIT_TIME = 20 // Proxy connection sleep.
 	OK        = iota
 )
 
@@ -36,7 +36,6 @@ const (
 const (
 	CAPTCHA_API = "/api/captcha/2chcaptcha/"
 	POST_API    = "/user/posting"
-	//POST_API    = "/makaba/posting.fcgi?json=1"
 )
 
 // General posting API's response interface.
@@ -51,10 +50,12 @@ type MakabaOk struct {
 	Result int32
 }
 
+// OK = 0, if request is successful.
 func (r *MakabaOk) Code() int32 {
 	return OK
 }
 
+// Get response message.
 func (r *MakabaOk) Message() string {
 	return fmt.Sprintf("OK, пост %d отправлен.", r.Num)
 }
@@ -68,10 +69,12 @@ type MakabaFail struct {
 	Result int32
 }
 
+// Get error code.
 func (r *MakabaFail) Code() int32 {
 	return r.Error.Code
 }
 
+// Get error message.
 func (r *MakabaFail) Message() string {
 	return r.Error.Message
 }
@@ -84,7 +87,7 @@ type Post struct {
 
 	CaptchaId, CaptchaValue string
 	Env                     *env.Env
-	HTTPFailed              uint64 // Failed HTTP requests counter.
+	HTTPFailed              uint64 // Failed requests counter.
 }
 
 // General logging purpose method.
@@ -101,15 +104,29 @@ func (post *Post) Verbose(msg ...interface{}) {
 }
 
 // Set up custom headers and cookies for posting unit.
-// More in env/cookies.go
-func (post *Post) GetHeaders() {
-	// post.Proxy should be used here.
-	post.Cookies, post.Headers = env.GetHeaders(
-		"https://2ch.hk/b",
-		time.Second*time.Duration(WAIT_TIME))
+func (post *Post) InitPostCookiesAndHeaders() error {
+	var err error
+	post.Cookies, post.Headers, err = env.GetCookiesAndHeaders(
+		post.Proxy,
+		time.Second*WAIT_TIME)
+	return err
 }
 
-// Perform request with post headers, proxy and cookies.
+// Get solver function depending on start params.
+func (post *Post) GetCaptchaSolver() captcha.Solver {
+	switch post.Env.AntiCaptcha {
+	case env.RUCAPTCHA:
+		return captcha.RuCaptchaSolver
+
+	case env.OCR:
+		return captcha.NeuralSolver
+
+	default:
+		return captcha.NeuralSolver
+	}
+}
+
+// Perform request with post's headers, proxy and cookies.
 func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	// Setting up cookies.
 	for i := range post.Cookies {
@@ -141,16 +158,16 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
 	post.Log(resp.Status)
 	cont, err := ioutil.ReadAll(resp.Body)
-	post.Verbose(err)
 	if err != nil {
 		return nil, err
 	}
 	return cont, nil
 }
 
-// Perform HTTP GET request to url with post's headers, proxy and cookies.
+// Http Get request with post's headers, proxy and cookies.
 func (post *Post) SendGet(link string) ([]byte, error) {
 	req, err := http.NewRequest("GET", link, nil)
 	if err != nil {
@@ -159,20 +176,22 @@ func (post *Post) SendGet(link string) ([]byte, error) {
 	return post.PerformReq(req)
 }
 
-// Get captcha id from 2ch server and set post.CaptchaId field.
-func (post *Post) SetCaptchaId() *captcha.CaptchaIdError {
-	link := "https://2ch." + post.Env.Domain + CAPTCHA_API + "id?board=" + post.Env.Board + "&thread=" + strconv.FormatUint(post.Env.Thread, 10)
+// Get captcha id from the server and set up post.CaptchaId field.
+func (post *Post) GetCaptchaId() *captcha.CaptchaIdError {
+	link := "https://2ch.hk" + CAPTCHA_API + "id?board=" + post.Env.Board + "&thread=" + strconv.FormatUint(post.Env.Thread, 10)
 	cont, err := post.SendGet(link)
 	if err != nil {
 		post.Log(err)
 		cerr := captcha.NewCaptchaIdError(captcha.CAPTCHA_HTTP_FAIL, err)
 		return cerr
 	}
+
 	var response captcha.CaptchaJSON
 	json.Unmarshal(cont, &response)
 	if len(response.Id) == 0 {
 		return captcha.NewCaptchaIdError(response.Result, nil)
 	}
+
 	post.CaptchaId = response.Id
 	post.Verbose("Captcha Id Response => ", response)
 	return nil
@@ -180,7 +199,7 @@ func (post *Post) SetCaptchaId() *captcha.CaptchaIdError {
 
 // Get captcha image from server by it's id.
 func (post *Post) GetCaptchaImage() ([]byte, error) {
-	link := "https://2ch." + post.Env.Domain + CAPTCHA_API + "show?id=" + post.CaptchaId
+	link := "https://2ch.hk" + CAPTCHA_API + "show?id=" + post.CaptchaId
 	img, err := post.SendGet(link)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения капчи: %v", err)
@@ -192,18 +211,19 @@ func (post *Post) GetCaptchaImage() ([]byte, error) {
 func (post *Post) SolveCaptcha(solver captcha.Solver) error {
 	img, err := post.GetCaptchaImage()
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка получения капчи: %v", err)
 	}
+
 	value, err := solver(img, post.Env.Key)
 	if err != nil {
 		return fmt.Errorf("ошибка решения капчи: %v", err)
 	}
+
 	post.CaptchaValue = value
 	return nil
 }
 
 // Build params map to pass them in multipart request.
-// I.e. everything, that is not a file.
 func (post *Post) MakeParamsMap() (map[string]string, error) {
 	board, thread := post.Env.Board, post.Env.Thread
 	if post.Env.WipeMode == env.SHRAPNEL {
@@ -213,6 +233,7 @@ func (post *Post) MakeParamsMap() (map[string]string, error) {
 			return nil, err
 		}
 	}
+
 	rand.Seed(time.Now().UnixNano())
 	params := map[string]string{
 		"task":             "post",
@@ -250,7 +271,7 @@ func (post *Post) MakeFilesMap() (map[string][]byte, error) {
 		l = rand.Intn(len(post.Env.Files))
 		n = uint8(0)
 	)
-	// Using greedy, in worst case O(n), where n -- post.Env.Files size.
+
 	for i := 0; limit > 0 && n != post.Env.FilesPerPost; i++ {
 		if i != 0 && (l+i)%len(post.Env.Files) == l {
 			break
@@ -277,23 +298,27 @@ func (post *Post) MakeFilesMap() (map[string][]byte, error) {
 	return files, nil
 }
 
+// Sending post with body containing params and files.
 func (post *Post) SendPost(params map[string]string, files map[string][]byte) (MakabaResponse, error) {
-	//post.Env.Session.CollectData(params["comment"])
 	var (
 		link = "https://2ch." + post.Env.Domain + POST_API
 		ok   MakabaOk
 		fail MakabaFail
 		form = network.FileForm{"file[]", files}
 	)
+
 	req, err := network.NewPostMultipartRequest(link, params, &form)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось сформировать запрос: %v", err)
 	}
+
 	cont, err := post.PerformReq(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка отправки запроса: %v", err)
 	}
+
 	post.Verbose("Makaba Response => ", string(cont))
+
 	json.Unmarshal(cont, &ok)
 	if ok.Num == 0 {
 		json.Unmarshal(cont, &fail)
