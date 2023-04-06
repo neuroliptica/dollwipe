@@ -1,6 +1,5 @@
 // rucaptcha.go: RuCaptcha online solver implementation.
-//
-// Send image to rucaptcha through api with ruCaptchaPost function;
+// Send image to rucaptcha through API with ruCaptchaPost function;
 // Then check every cTimeout seconds for the answer with ruCaptchaGet function.
 
 package captcha
@@ -13,7 +12,7 @@ import (
 	"time"
 )
 
-// Timeout in seconds between two GET requests to RuCaptcha servers.
+// Timeout in seconds between two Get requests to the RuCaptcha servers.
 const cTimeout = 1
 
 // RuCaptcha API response struct.
@@ -22,6 +21,7 @@ type RuCaptcha struct {
 	Request string
 }
 
+// Solve captcha using RuCaptcha, key is the API key.
 func RuCaptchaSolver(img []byte, key string) (string, error) {
 	answer, err := ruCaptchaPost(img, key)
 	if err != nil {
@@ -44,7 +44,7 @@ func RuCaptchaSolver(img []byte, key string) (string, error) {
 		if err != nil {
 			errors++
 			if errors >= limit {
-				return failed("RuCaptcha: GET запрос провалился %d раз(а), err = %v", limit, err)
+				return failed("RuCaptcha: Get запрос провалился %d раз(а), err = %v", limit, err)
 			}
 			continue
 		}
@@ -60,7 +60,7 @@ func RuCaptchaSolver(img []byte, key string) (string, error) {
 			return failed("неверный формат API ключа.")
 		case "ERROR_KEY_DOES_NOT_EXIST":
 			return failed("API ключ не существует.")
-		// other errros described here: rucaptcha.com/api-rucaptcha#res_errors
+			// other errros described here: rucaptcha.com/api-rucaptcha#res_errors
 		default:
 			return failed("ошибка решения капчи: %s", get.Request)
 		}
@@ -68,6 +68,7 @@ func RuCaptchaSolver(img []byte, key string) (string, error) {
 	}
 }
 
+// Send captcha image to the RuCaptcha solvers.
 func ruCaptchaPost(img []byte, key string) (RuCaptcha, error) {
 	var (
 		answer RuCaptcha
@@ -98,6 +99,7 @@ func ruCaptchaPost(img []byte, key string) (RuCaptcha, error) {
 	return answer, nil
 }
 
+// Check if the solving result is ready.
 func ruCaptchaGet(id, key string) (RuCaptcha, error) {
 	var (
 		answer RuCaptcha

@@ -117,10 +117,8 @@ func (post *Post) GetCaptchaSolver() captcha.Solver {
 	switch post.Env.AntiCaptcha {
 	case env.RUCAPTCHA:
 		return captcha.RuCaptchaSolver
-
 	case env.OCR:
 		return captcha.NeuralSolver
-
 	default:
 		return captcha.NeuralSolver
 	}
@@ -145,7 +143,6 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
 		req.Header.Add("Proxy-Authorization", basicAuth)
 	}
-
 	var transport *http.Transport
 	if post.Env.UseProxy {
 		transport.ProxyConnectHeader = req.Header
@@ -158,8 +155,8 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	post.Log(resp.Status)
+
 	cont, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -185,13 +182,11 @@ func (post *Post) GetCaptchaId() *captcha.CaptchaIdError {
 		cerr := captcha.NewCaptchaIdError(captcha.CAPTCHA_HTTP_FAIL, err)
 		return cerr
 	}
-
 	var response captcha.CaptchaJSON
 	json.Unmarshal(cont, &response)
 	if len(response.Id) == 0 {
 		return captcha.NewCaptchaIdError(response.Result, nil)
 	}
-
 	post.CaptchaId = response.Id
 	post.Verbose("Captcha Id Response => ", response)
 	return nil
@@ -213,12 +208,10 @@ func (post *Post) SolveCaptcha(solver captcha.Solver) error {
 	if err != nil {
 		return fmt.Errorf("ошибка получения капчи: %v", err)
 	}
-
 	value, err := solver(img, post.Env.Key)
 	if err != nil {
 		return fmt.Errorf("ошибка решения капчи: %v", err)
 	}
-
 	post.CaptchaValue = value
 	return nil
 }
@@ -233,7 +226,6 @@ func (post *Post) MakeParamsMap() (map[string]string, error) {
 			return nil, err
 		}
 	}
-
 	rand.Seed(time.Now().UnixNano())
 	params := map[string]string{
 		"task":             "post",
@@ -271,7 +263,6 @@ func (post *Post) MakeFilesMap() (map[string][]byte, error) {
 		l = rand.Intn(len(post.Env.Files))
 		n = uint8(0)
 	)
-
 	for i := 0; limit > 0 && n != post.Env.FilesPerPost; i++ {
 		if i != 0 && (l+i)%len(post.Env.Files) == l {
 			break
@@ -306,17 +297,14 @@ func (post *Post) SendPost(params map[string]string, files map[string][]byte) (M
 		fail MakabaFail
 		form = network.FileForm{"file[]", files}
 	)
-
 	req, err := network.NewPostMultipartRequest(link, params, &form)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось сформировать запрос: %v", err)
 	}
-
 	cont, err := post.PerformReq(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка отправки запроса: %v", err)
 	}
-
 	post.Verbose("Makaba Response => ", string(cont))
 
 	json.Unmarshal(cont, &ok)

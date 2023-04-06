@@ -49,7 +49,6 @@ func InitPost(penv *env.Env, proxy network.Proxy, ch chan<- InitPostResponse) {
 		ch <- response // Failed
 		return
 	}
-
 	response.PostPtr = &post
 	for key, value := range post.Headers {
 		post.Verbose(key, ": ", string(value))
@@ -70,21 +69,17 @@ func responseHandler(post *Post, code int32) {
 	case ERROR_BANNED:
 		post.Log("прокся забанена, удаляю.")
 		post.Env.Filter <- post.Proxy
-
 	case ERROR_ACCESS_DENIED:
 		post.Log("доступ заблокирован, удаляю проксю.")
 		post.Env.Filter <- post.Proxy
-
 	case ERROR_CLOSED:
 		post.Log("тред закрыт, маладца.")
 		if post.Env.WipeMode == env.SINGLE {
 			post.Log("больше не могу постить в этот тред, пора на покой.")
 			os.Exit(0)
 		}
-
 	case ERROR_INVALID_CAPTCHA, ERROR_TOO_FAST:
 		break
-
 	default:
 		post.Log(fmt.Sprintf(
 			"неизвестный код = %d; меня пока не научили на это правильно реагировать.", code))
@@ -97,7 +92,6 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 	switch cerr.ErrorId {
 	case captcha.CAPTCHA_FAIL:
 		post.Log("макаба вернула 0, ошибка получения. Может истекли печенюшки?")
-
 	case captcha.CAPTCHA_HTTP_FAIL: // This can be caused by either 2ch server or proxy.
 		if post.Env.UseProxy {
 			post.Verbose(cerr.Extra)
@@ -111,7 +105,6 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 			post.Log("прокся исчерпала попытки, удаляю.")
 			post.Env.Filter <- post.Proxy
 		}
-
 	default:
 		post.Log(fmt.Sprintf("id=%d: неизвестная ошибка при получении капчи.", cerr.ErrorId))
 	}
@@ -132,7 +125,6 @@ func RunPost(post *Post) {
 		captchaIdErrorHandler(post, cerr)
 		return
 	}
-
 	post.Log("решаю капчу...")
 
 	solver := post.GetCaptchaSolver()
@@ -141,7 +133,6 @@ func RunPost(post *Post) {
 		failed(err)
 		return
 	}
-
 	post.Log(fmt.Sprintf("капча решена успешно: %s", post.CaptchaValue))
 
 	params, err := post.MakeParamsMap()
@@ -150,7 +141,6 @@ func RunPost(post *Post) {
 		failed(err)
 		return
 	}
-
 	files := make(map[string][]byte)
 	if post.Env.FilesPerPost != 0 {
 		files, err = post.MakeFilesMap()
@@ -160,14 +150,14 @@ func RunPost(post *Post) {
 			return
 		}
 	}
-
 	response, err := post.SendPost(params, files)
 	if err != nil {
 		post.Log("не смогла отправить пост.")
 		failed(err)
 		return
 	}
-
-	post.Log(fmt.Sprintf("%d: %s", response.Code(), response.Message()))
+	post.Log(fmt.Sprintf("%d: %s",
+		response.Code(),
+		response.Message()))
 	responseHandler(post, response.Code())
 }

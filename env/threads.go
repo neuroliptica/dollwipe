@@ -13,19 +13,23 @@ import (
 	"time"
 )
 
+// Thread ids array.
 type Catalog struct {
 	Threads []struct{ Num uint64 }
 }
 
+// Single post with it's number and id.
 type Comment struct {
 	Comment string
 	Num     uint64
 }
 
+// All posts from thread.
 type Thread struct {
 	Posts []Comment
 }
 
+// Get all threads from board as an array of thread's ids.
 func getAllThreads(board string) (*Catalog, error) {
 	link := fmt.Sprintf("https://2ch.hk/%s/catalog.json", board)
 	cont, err := network.SendGet(link)
@@ -40,6 +44,7 @@ func getAllThreads(board string) (*Catalog, error) {
 	return &catalog, nil
 }
 
+// Get random thread id from board.
 func GetRandomThread(board string) (uint64, error) {
 	catalog, err := getAllThreads(board)
 	if err != nil {
@@ -50,12 +55,14 @@ func GetRandomThread(board string) (uint64, error) {
 	return thread.Num, nil
 }
 
+// Get all posts from the thread.
 func getAllPosts(board string, thread uint64) (*Thread, error) {
 	link := fmt.Sprintf("https://2ch.hk/%s/res/%s.json", board, strconv.FormatUint(thread, 10))
 	cont, err := network.SendGet(link)
 	if err != nil {
 		return nil, err
 	}
+
 	var posts struct{ Threads []Thread }
 	json.Unmarshal(cont, &posts)
 	if len(posts.Threads) == 0 || len(posts.Threads[0].Posts) == 0 {
@@ -64,6 +71,7 @@ func getAllPosts(board string, thread uint64) (*Thread, error) {
 	return &(posts.Threads[0]), nil
 }
 
+// Get random post from thread.
 func GetRandomPost(board string, thread uint64) (*Comment, error) {
 	posts, err := getAllPosts(board, thread)
 	if err != nil {
@@ -74,7 +82,7 @@ func GetRandomPost(board string, thread uint64) (*Comment, error) {
 	return &post, nil
 }
 
-// Will get all posts from all threads on board, in parallel.
+// Will get all post's text from all threads on board.
 // TODO: replace the HTML tags in content with the makaba tags.
 func getPostsTexts(board string) ([]string, error) {
 	catalog, err := getAllThreads(board)

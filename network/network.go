@@ -33,7 +33,7 @@ type Proxy struct {
 	Login, Pass string // If proxy is public, then these fields will be empty.
 	Protocol    string
 
-	SessionId int
+	SessionId int // Usefull only with -s flag.
 }
 
 // Default value indicates no proxy.

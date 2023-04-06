@@ -1,3 +1,5 @@
+// ocr.go: build and send request to the local ocr instance.
+
 package captcha
 
 import (
@@ -11,24 +13,27 @@ import (
 	"net/http"
 )
 
+// Json schema for request. Body contains images in base64.
 type RequestBody struct {
 	Data []string `json:"data"`
 }
 
+// Json schema for response. Data contains solver result.
 type ResponseOk struct {
 	Data          []string
 	Is_generating bool
 	Duration      float64
 }
 
+// Local OCR instance url.
 const url = "http://127.0.0.1:7860/api/predict"
 
+// Solve captcha using ocr instance. Second argument is not used.
 func NeuralSolver(img []byte, key string) (string, error) {
 	body := RequestBody{
 		Data: []string{"data:image/png;base64," + base64.StdEncoding.EncodeToString(img)},
 	}
 	bodyBytes, err := json.Marshal(body)
-	//log.Println(string(bodyBytes))
 	if err != nil {
 		return "", err
 	}

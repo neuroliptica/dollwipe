@@ -16,6 +16,10 @@ const (
 	CAPTCHA_HTTP_FAIL
 )
 
+// General solver function type.
+// Every captcha's solver function should satisfy this signature.
+type Solver = func(img []byte, key string) (string, error)
+
 // 2ch API captcha id response.
 type CaptchaJSON struct {
 	Id, Input, Type string
@@ -28,14 +32,12 @@ type CaptchaIdError struct {
 	Extra   error
 }
 
+// New CaptchaIdError instance with code from the response.
 func NewCaptchaIdError(errorId int32, err error) *CaptchaIdError {
 	return &CaptchaIdError{errorId, err}
 }
 
+// Error interface instance.
 func (e *CaptchaIdError) Error() string {
 	return fmt.Sprintf("%d", e.ErrorId)
 }
-
-// General solver function type.
-// Every captcha's solver function should satisfy this signature.
-type Solver = func(img []byte, key string) (string, error)

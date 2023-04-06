@@ -1,5 +1,10 @@
 // proxy.go: parser for proxies.
-// Check validness.
+
+// Default proxy format is:
+// protocol://ip:port
+
+// Or if the authorization required:
+// protocol://login:pass@ip:port
 
 package env
 
@@ -19,12 +24,6 @@ var protocols = map[string]bool{
 	"socks4": true,
 	"socks5": true,
 }
-
-// Default proxy format is:
-// protocol://ip:port
-
-// Or if the authorization required:
-// protocol://login:pass@ip:port
 
 // Get the protocol without ://.
 // Rest part will be returned also without ://.
@@ -59,6 +58,7 @@ func getCredits(addr string) (login, pass, rest string, err error) {
 	return credits[0], credits[1], arr[1], nil
 }
 
+// Get the address in the ip:port format.
 func getAddress(addr string) (ip, port string, err error) {
 	arr := strings.Split(addr, ":")
 	if len(arr) < 2 {
@@ -91,6 +91,7 @@ func getAddress(addr string) (ip, port string, err error) {
 	return
 }
 
+// Create network.Proxy instance from string.
 func getProxy(addr string) (proxy network.Proxy, err error) {
 	// Validating format
 	protocol, rest, err := getProtocol(addr)
