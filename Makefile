@@ -4,6 +4,8 @@ DIR 	   = gui
 LINKERFLAG = --Xcc="-I${DIR}"
 PACKAGES   = --pkg gtk+-3.0 --pkg posix
 
+.PHONY: build GUI ENGINE
+
 build: GUI ENGINE
 	@echo Done
 
