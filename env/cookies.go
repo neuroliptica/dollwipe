@@ -44,7 +44,7 @@ func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
 }
 
 func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Cookie, error) {
-	browser := rod.New().Timeout(30 * time.Second).MustConnect()
+	browser := rod.New().Timeout(time.Minute).MustConnect()
 	defer browser.Close()
 
 	page := browser.MustPage("")
@@ -52,10 +52,19 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 	defer router.Stop()
 
 	router.MustAdd("*", func(ctx *rod.Hijack) {
-		client := http.Client{
-			Transport: network.MakeTransport(p),
-			Timeout:   30 * time.Second,
+		transport := network.MakeTransport(p)
+		if p.ProtocolType() != "socks" && p.AuthNeed() {
+			auth := network.MakeProxyAuthHeader(p)
+			ctx.Request.Req().Header.Set("Proxy-Authorization", auth)
 		}
+		if !p.NoProxy() {
+			transport.ProxyConnectHeader = ctx.Request.Req().Header
+		}
+		client := http.Client{
+			Transport: transport,
+			Timeout:   time.Minute,
+		}
+		fmt.Println(ctx.Request.Headers())
 		ctx.LoadResponse(&client, true)
 	})
 
