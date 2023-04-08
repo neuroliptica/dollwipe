@@ -8,7 +8,6 @@ import (
 	"dollwipe/content"
 	"dollwipe/env"
 	"dollwipe/network"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -135,13 +134,9 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		req.Header.Add(key, string(value))
 	}
 	// Setting up HTTP(s) proxy auth.
-	if post.Env.UseProxy &&
-		post.Proxy.AuthNeed() &&
-		post.Proxy.ProtocolType() != "socks" {
-
-		credits := post.Proxy.Login + ":" + post.Proxy.Pass
-		basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
-		req.Header.Add("Proxy-Authorization", basicAuth)
+	if post.Env.UseProxy && post.Proxy.AuthNeed() && post.Proxy.ProtocolType() != "socks" {
+		auth := network.MakeProxyAuthHeader(post.Proxy)
+		req.Header.Add("Proxy-Authorization", auth)
 	}
 	var transport *http.Transport
 	if post.Env.UseProxy {
