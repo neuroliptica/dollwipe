@@ -6,6 +6,7 @@ package network
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"mime/multipart"
@@ -70,6 +71,12 @@ func (p Proxy) StringSid() string {
 		return fmt.Sprintf("%s[sid=%d]", p, p.SessionId)
 	}
 	return p.String()
+}
+
+// Create base64 Proxy-Authorization header value.
+func MakeProxyAuthHeader(p Proxy) string {
+	credits := p.Login + ":" + p.Pass
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(credits))
 }
 
 // Build custom TLS transport for sending requests with proxy.
