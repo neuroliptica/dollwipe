@@ -38,6 +38,9 @@ func getProtocol(addr string) (protocol, rest string, err error) {
 		return
 	}
 	protocol = arr[0]
+	if protocol == "https" {
+		protocol = "http"
+	}
 	arr[1] = arr[1][2:] // cut down '//'
 	rest = strings.Join(arr[1:], ":")
 	return
@@ -58,23 +61,20 @@ func getCredits(addr string) (login, pass, rest string, err error) {
 	return credits[0], credits[1], arr[1], nil
 }
 
-// Get the address in the ip:port format.
-func getAddress(addr string) (ip, port string, err error) {
+// Get the proxy ip and port.
+func getAddress(addr string) (string, string, error) {
 	arr := strings.Split(addr, ":")
 	if len(arr) < 2 {
-		err = fmt.Errorf("неверный формат.")
-		return
+		return "", "", fmt.Errorf("неверный формат.")
 	}
-	ip, port = arr[0], arr[1]
+	ip, port := arr[0], arr[1]
 	nums := strings.Split(ip, ".")
 	if len(nums) != 4 {
-		err = fmt.Errorf("неверный формат.")
-		return
+		return ip, port, fmt.Errorf("неверный формат.")
 	}
 	for _, num := range nums {
-		if _, err = strconv.Atoi(num); err != nil {
-			err = fmt.Errorf("адрес содержит нечисловые литералы.")
-			return
+		if _, err := strconv.Atoi(num); err != nil {
+			return ip, port, fmt.Errorf("адрес содержит нечисловые литералы.")
 		}
 	}
 	runePort := []rune(port)
@@ -85,10 +85,9 @@ func getAddress(addr string) (ip, port string, err error) {
 	}
 	port = string(runePort)
 	if len(port) == 0 {
-		err = fmt.Errorf("порт содержит нечисловые литералы.")
-		return
+		return ip, port, fmt.Errorf("порт содержит нечисловые литералы.")
 	}
-	return
+	return ip, port, nil
 }
 
 // Create network.Proxy instance from string.
