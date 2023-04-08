@@ -134,7 +134,7 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		req.Header.Add(key, string(value))
 	}
 	// Setting up HTTP(s) proxy auth.
-	if post.Env.UseProxy && post.Proxy.AuthNeed() && post.Proxy.ProtocolType() != "socks" {
+	if post.Env.UseProxy && post.Proxy.NeedAuth() && post.Proxy.ProxyType() != "socks" {
 		auth := network.MakeProxyAuthHeader(post.Proxy)
 		req.Header.Add("Proxy-Authorization", auth)
 	}

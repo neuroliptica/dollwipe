@@ -43,12 +43,12 @@ func (p Proxy) NoProxy() bool {
 }
 
 // Check if auth is need.
-func (p Proxy) AuthNeed() bool {
+func (p Proxy) NeedAuth() bool {
 	return p.Login != "" && p.Pass != ""
 }
 
 // Separate Http(s) and Socks proxies.
-func (p Proxy) ProtocolType() string {
+func (p Proxy) ProxyType() string {
 	switch p.Protocol {
 	case "http", "https":
 		return p.Protocol
@@ -97,7 +97,7 @@ func MakeTransport(p Proxy) *http.Transport {
 		TLSNextProto:    proto,
 	}
 	// Setting up socks proxy.
-	if p.ProtocolType() == "socks" {
+	if p.ProxyType() == "socks" {
 		auth := &proxy.Auth{
 			User:     p.Login,
 			Password: p.Pass,

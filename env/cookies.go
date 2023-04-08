@@ -53,7 +53,7 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 
 	router.MustAdd("*", func(ctx *rod.Hijack) {
 		transport := network.MakeTransport(p)
-		if p.ProtocolType() != "socks" && p.AuthNeed() {
+		if p.ProxyType() != "socks" && p.NeedAuth() {
 			auth := network.MakeProxyAuthHeader(p)
 			ctx.Request.Req().Header.Set("Proxy-Authorization", auth)
 		}
