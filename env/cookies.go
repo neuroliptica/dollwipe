@@ -1,4 +1,18 @@
 // cookies.go: bypass cloudflare, get cookies and headers for future requests.
+//
+// Bypass scheme looks like this.
+// REQ - request, RESP - response, MID - middleware.
+//
+//		REQ 2ch.hk/b -> MID (set up proxy) -> SERVER -> wait until cloudflare finished
+//      -> RESP -> MID (response unmodified) -> CLIENT
+//
+//		After this, we should get "Set-Cookies" header already.
+//      To check if cookies has set up process one more chain:
+//
+//		REQ 2ch.hk/api/captcha/... -> MID (set up proxy) -> SERVER -> wait until navigation
+//		-> RESP -> MID (response unmodified) -> CLIENT
+//
+//		After chain finished, we can extract request cookies and finally use them.
 
 package env
 
@@ -43,6 +57,9 @@ func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
 	return cookies
 }
 
+// Create webdriver instance and pass it's requests through custom middleware.
+// Error will be returned if some of the requests has failed. Otherwise re-
+// turn value should be processed as a successful, even if it is empty.
 func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Cookie, error) {
 	browser := rod.New().Timeout(time.Minute).MustConnect()
 	defer browser.Close()
@@ -51,6 +68,9 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 	router := page.HijackRequests()
 	defer router.Stop()
 
+	// When request is hijacked, custom trasport will be set.
+	// For http(s) proxies with authorization will set an auth header.
+	// Hijacked response will return unmodified.
 	router.MustAdd("*", func(ctx *rod.Hijack) {
 		transport := network.MakeTransport(p)
 		if p.ProxyType() != "socks" && p.NeedAuth() {
@@ -67,7 +87,6 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 		fmt.Println(ctx.Request.Headers())
 		ctx.LoadResponse(&client, true)
 	})
-
 	go router.Run()
 
 	err := page.Navigate(mainPage)
@@ -77,16 +96,11 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 	page.MustWaitNavigation()
 	time.Sleep(wait)
 
-	//var e proto.NetworkRequestWillBeSent
-	//waitRequest := page.WaitEvent(&e)
-
 	err = page.Navigate(captchaApi)
 	if err != nil {
 		return nil, err
 	}
 	page.MustWaitLoad()
-	//time.Sleep(time.Second * 10)
-	//waitRequest()
 
 	cookies, err := page.Cookies([]string{captchaApi})
 	for _, i := range cookies {
@@ -95,7 +109,6 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 	if err != nil {
 		return nil, err
 	}
-
 	return protoToHttp(cookies), nil
 }
 
@@ -105,7 +118,6 @@ func GetCookiesAndHeaders(p network.Proxy, wait time.Duration) ([]*http.Cookie, 
 	if err != nil {
 		return nil, nil, err
 	}
-
 	headers := map[string]Header{
 		"Accept":                    Header("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"),
 		"Accept-Language":           Header("en-US,en;q=0.5"),
@@ -117,6 +129,5 @@ func GetCookiesAndHeaders(p network.Proxy, wait time.Duration) ([]*http.Cookie, 
 		"Upgrade-Insecure-Requests": Header("1"),
 		"User-Agent":                Header("Mozilla/5.0 (Macintosh; Intel Mac OS X 11_0_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"),
 	}
-	//headers["Accept-Encoding"] = Header("gzip, deflate, br")
 	return cookies, headers, nil
 }
