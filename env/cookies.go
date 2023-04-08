@@ -4,10 +4,10 @@
 // REQ - request, RESP - response, MID - middleware.
 //
 //		REQ 2ch.hk/b -> MID (set up proxy) -> SERVER -> wait until cloudflare finished
-//      -> RESP -> MID (response unmodified) -> CLIENT
+//		-> RESP -> MID (response unmodified) -> CLIENT
 //
 //		After this, we should get "Set-Cookies" header already.
-//      To check if cookies has set up process one more chain:
+//		To check if cookies has set up process one more chain:
 //
 //		REQ 2ch.hk/api/captcha/... -> MID (set up proxy) -> SERVER -> wait until navigation
 //		-> RESP -> MID (response unmodified) -> CLIENT
