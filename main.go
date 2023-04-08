@@ -17,32 +17,10 @@ type (
 	InitDone       struct{}
 )
 
-func logger(messages <-chan string) {
-	for msg := range messages {
-		log.Println(msg)
-	}
-}
-
-func filter(bad <-chan network.Proxy, posts map[network.Proxy]*engine.Post) {
-	for proxy := range bad {
-		delete(posts, proxy)
-	}
-}
-
 const (
 	POST_FAILED = iota
-	POST_SEND
+	POST_OK
 )
-
-func counter(status <-chan bool, sum chan<- int) {
-	for v := range status {
-		if v {
-			sum <- POST_SEND
-		} else {
-			sum <- POST_FAILED
-		}
-	}
-}
 
 func main() {
 	log.SetFlags(log.Ltime)
@@ -50,22 +28,42 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go logger(lenv.Logger)
+	// Thread safe logging purpose goroutine. All future logging
+	// should be done through the lenv.Logger channel.
+	//
+	// ex: lenv.Logger <- log_message
+	go func() {
+		for msg := range lenv.Logger {
+			log.Println(msg)
+		}
+	}()
 
+	// Thread safe statistics counter.
 	postsUpdate := make(chan int)
-	go counter(lenv.Status, postsUpdate)
+	go func() {
+		for ok := range lenv.Status {
+			if ok {
+				postsUpdate <- POST_OK
+			} else {
+				postsUpdate <- POST_FAILED
+			}
+		}
+	}()
 
-	// Init posts. Also if we do not use proxy, "localhost" will be count as a proxy in proxy map.
-	// Despite this, it will never be set as a normal proxy.
-	// So all the request will be performed through our own ip.
+	// Init posts. Also if we do not use proxy then "localhost"
+	// will be count as a proxy in proxy map. Despite this, it
+	// will never be set as a normal proxy. So all the requests
+	// will be performed through our own ip.
 	var Posts = make(map[network.Proxy]*engine.Post, 0)
 	if !lenv.UseProxy {
-		localhost := network.Proxy{"localhost", nil, "", "", "", 0}
-		lenv.Proxies = append(lenv.Proxies, localhost) // So mod won't be zero
+		localhost := network.Proxy{
+			Addr: "localhost",
+		}
+		lenv.Proxies = append(lenv.Proxies, localhost)
 	}
 
 	// This part will spawn goroutine for every Post instance.
-	// Then 'll wait until Posts initialization will finish.
+	// Then will wait until Posts initialization is not finished.
 	initResponse := make(chan engine.InitPostResponse)
 	initDone := make(chan InitDone)
 	singleInitDone := make(chan SingleInitDone)
@@ -92,7 +90,7 @@ func main() {
 		}
 	}()
 
-	// Init partially.
+	// Init partially; InitAtOnce is corresponding to -I flag value.
 	for i := 0; i < len(lenv.Proxies); i += int(lenv.InitAtOnce) {
 		launched := 0
 		for j := 0; j < int(lenv.InitAtOnce) && i+j < len(lenv.Proxies); j++ {
@@ -107,15 +105,24 @@ func main() {
 			}
 		}
 	}
-
 	// Block until initialization is done.
 	<-initDone
 
+	if len(Posts) == 0 {
+		lenv.Logger <- "ошибка, не удалось инициализировать ни одной прокси."
+		os.Exit(0)
+	}
 	if lenv.UseProxy {
 		lenv.Logger <- fmt.Sprintf(
 			"проксей инициализировано - %d.", len(lenv.Proxies))
 	}
-	go filter(lenv.Filter, Posts)
+
+	// Thread safe bad proxies filter.
+	go func() {
+		for proxy := range lenv.Filter {
+			delete(Posts, proxy)
+		}
+	}()
 
 	for i := uint64(0); i < lenv.Iters; i++ {
 		var (
@@ -142,7 +149,7 @@ func main() {
 		postsOk, postsFail := 0, 0
 		for uint64(postsOk+postsFail) != used {
 			update := <-postsUpdate
-			if update == POST_SEND {
+			if update == POST_OK {
 				postsOk++
 			} else {
 				postsFail++
@@ -152,7 +159,7 @@ func main() {
 			"Успешно отправлено - %d; всего отправлено - %d.",
 			postsOk, postsOk+postsFail)
 		if len(Posts) == 0 {
-			lenv.Logger <- fmt.Sprintf("все проксичи умерли, помянем.")
+			lenv.Logger <- "все проксичи умерли, помянем."
 			os.Exit(0)
 		}
 		if i+1 != lenv.Iters {
