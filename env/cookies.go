@@ -68,6 +68,17 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 	router := page.HijackRequests()
 	defer router.Stop()
 
+	// Ignore thumbnails and other media for faster bypass.
+	router.MustAdd("*.jpg", func(ctx *rod.Hijack) {
+		ctx.Response.Fail(proto.NetworkErrorReasonAborted)
+	})
+	router.MustAdd("*.gif", func(ctx *rod.Hijack) {
+		ctx.Response.Fail(proto.NetworkErrorReasonAborted)
+	})
+	router.MustAdd("*.png", func(ctx *rod.Hijack) {
+		ctx.Response.Fail(proto.NetworkErrorReasonAborted)
+	})
+
 	// When request is hijacked, custom trasport will be set.
 	// For http(s) proxies with authorization will set an auth header.
 	// Hijacked response will return unmodified.
@@ -84,7 +95,7 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 			Transport: transport,
 			Timeout:   time.Minute,
 		}
-		fmt.Println(ctx.Request.Headers())
+		fmt.Println(ctx.Request.URL())
 		ctx.LoadResponse(&client, true)
 	})
 	go router.Run()
@@ -103,9 +114,6 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 	page.MustWaitLoad()
 
 	cookies, err := page.Cookies([]string{captchaApi})
-	for _, i := range cookies {
-		fmt.Println(i.Value)
-	}
 	if err != nil {
 		return nil, err
 	}
