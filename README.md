@@ -19,6 +19,9 @@
 - Вайп с пасскодом.
 - Остальные антикапчи (XCaptcha, AntiCaptcha).
 
+## Собрать
+[Гайд по сборке под линукс и винду](https://github.com/neuroliptica/dollwipe/blob/main/docs/CompileGuide.md).
+
 ## License
 MIT
 
