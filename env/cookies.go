@@ -61,14 +61,14 @@ func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
 // Error will be returned if some of the requests has failed. Otherwise re-
 // turn value should be processed as a successful, even if it is empty.
 func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Cookie, error) {
-	browser := rod.New().Timeout(time.Minute).MustConnect()
+	browser := rod.New().Timeout(2 * time.Minute).MustConnect()
 	defer browser.Close()
 
 	page := browser.MustPage("")
 	router := page.HijackRequests()
 	defer router.Stop()
 
-	// Ignore thumbnails and other media for faster bypass.
+	// Do not send shit reuqests for faster bypass.
 	router.MustAdd("*.jpg", func(ctx *rod.Hijack) {
 		ctx.Response.Fail(proto.NetworkErrorReasonAborted)
 	})
@@ -76,6 +76,15 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 		ctx.Response.Fail(proto.NetworkErrorReasonAborted)
 	})
 	router.MustAdd("*.png", func(ctx *rod.Hijack) {
+		ctx.Response.Fail(proto.NetworkErrorReasonAborted)
+	})
+	router.MustAdd("*google*", func(ctx *rod.Hijack) {
+		ctx.Response.Fail(proto.NetworkErrorReasonAborted)
+	})
+	router.MustAdd("*24smi*", func(ctx *rod.Hijack) {
+		ctx.Response.Fail(proto.NetworkErrorReasonAborted)
+	})
+	router.MustAdd("*yadro.ru*", func(ctx *rod.Hijack) {
 		ctx.Response.Fail(proto.NetworkErrorReasonAborted)
 	})
 
@@ -93,7 +102,7 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 		}
 		client := http.Client{
 			Transport: transport,
-			Timeout:   time.Minute,
+			Timeout:   2 * time.Minute,
 		}
 		fmt.Println(ctx.Request.URL())
 		ctx.LoadResponse(&client, true)
