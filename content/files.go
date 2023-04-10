@@ -4,7 +4,6 @@ package content
 
 import (
 	"bytes"
-	"dollwipe/env"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -14,8 +13,11 @@ import (
 	"time"
 )
 
-// General image decoder function type.
-type Decoder = func(io.Reader) (image.Image, error)
+// General image decoder and encoder function types.
+type (
+	Decoder = func(io.Reader) (image.Image, error)
+	Encoder = func(io.Writer, image.Image) error
+)
 
 // Colorize image represented as a slice of bytes.
 func colorizeBytes(img []byte, decoder Decoder) (image.Image, error) {
@@ -27,37 +29,33 @@ func colorizeBytes(img []byte, decoder Decoder) (image.Image, error) {
 	return modified, nil
 }
 
-// Colorize jpg/jpeg media represented in bytes.
-// Won't modify passed image content. Instead, new bytes slice will be created.
-func JpegColorize(img []byte) ([]byte, error) {
-	colorized, err := colorizeBytes(img, jpeg.Decode)
+// General colorization function.
+// Won't modify passed []byte slice. Instead will create a new one.
+func GeneralColorize(img []byte, decoder Decoder, encoder Encoder) ([]byte, error) {
+	colorized, err := colorizeBytes(img, decoder)
 	if err != nil {
 		return nil, err
 	}
 	colorizedBuf := new(bytes.Buffer)
-	err = jpeg.Encode(colorizedBuf, colorized, nil)
+	err = encoder(colorizedBuf, colorized)
 	if err != nil {
 		return nil, err
 	}
 	return colorizedBuf.Bytes(), nil
+}
+
+// Colorize jpg/jpeg media represented in bytes.
+func JpegColorize(img []byte) ([]byte, error) {
+	return GeneralColorize(img, jpeg.Decode, func(r io.Writer, c image.Image) error {
+		return jpeg.Encode(r, c, nil)
+	})
 }
 
 // Colorize png media represented in bytes.
-// Won't modify passed image content. Insted, new bytes slice will be created.
 func PngColorize(img []byte) ([]byte, error) {
-	colorized, err := colorizeBytes(img, png.Decode)
-	if err != nil {
-		return nil, err
-	}
-	colorizedBuf := new(bytes.Buffer)
-	err = png.Encode(colorizedBuf, colorized)
-	if err != nil {
-		return nil, err
-	}
-	return colorizedBuf.Bytes(), nil
+	return GeneralColorize(img, png.Decode, png.Encode)
 }
 
-// General colorize function.
 // Will create random RGBA layer and paint it over passed image.
 func colorize(r io.Reader, decoder Decoder) (image.Image, error) {
 	rand.Seed(time.Now().UnixNano())
@@ -99,24 +97,4 @@ func colorize(r io.Reader, decoder Decoder) (image.Image, error) {
 		}
 	}
 	return mutable, nil
-}
-
-func Colorize(file *env.File) []byte {
-	ext := env.GetExt(file.Name)
-	var (
-		err  error
-		cont []byte
-	)
-	switch ext {
-	case ".png":
-		cont, err = PngColorize(file.Content)
-	case ".jpg":
-		cont, err = JpegColorize(file.Content)
-	default:
-		break
-	}
-	if err != nil || cont == nil {
-		return file.Content
-	}
-	return cont
 }

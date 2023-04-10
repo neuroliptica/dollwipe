@@ -10,46 +10,11 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
-	"math/rand"
 	"os"
 	"strings"
-	"time"
 )
 
 const UID = "0"
-
-type (
-	File struct {
-		Name    string
-		Content []byte
-	}
-
-	Header string
-)
-
-// Extract extension from filename.
-func GetExt(fname string) string {
-	for i := len(fname) - 1; i >= 0; i-- {
-		if fname[i] == '.' {
-			return fname[i:]
-		}
-	}
-	return ""
-}
-
-// Gen random filename, save original file's extension.
-func (f *File) RandName() string {
-	rand.Seed(time.Now().UnixNano())
-	var (
-		letters  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321"
-		size     = rand.Int()%20 + 20
-		randname = make([]byte, size)
-	)
-	for i := 0; i < size; i++ {
-		randname[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(randname) + GetExt(f.Name)
-}
 
 // WipeMode
 const (
@@ -130,6 +95,8 @@ var defaultCaptions = []string{
 var notImplemented = func(x string) error {
 	return fmt.Errorf("%s ещё не реализовано.", x)
 }
+
+type Header string
 
 type Mode struct {
 	WipeMode    uint8
