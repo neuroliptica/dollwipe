@@ -31,6 +31,9 @@ const (
 	mainPage   = "https://2ch.hk/b"
 )
 
+// Value type for header pair.
+type Header string
+
 // Cast proto.NetworkCookie to http.Cookie.
 func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
 	cookies := make([]*http.Cookie, 0)

@@ -14,16 +14,14 @@ import (
 	"strings"
 )
 
-const UID = "0"
-
-// WipeMode
+// WipeMode: -mode flag consts.
 const (
 	SINGLE = iota
 	SHRAPNEL
 	CREATING
 )
 
-// AntiCaptcha
+// AntiCaptcha: -captcha flag consts.
 const (
 	RUCAPTCHA = iota
 	OCR
@@ -33,7 +31,7 @@ const (
 	MANUAL
 )
 
-// TextMode
+// TextMode: -text flag consts.
 const (
 	FROM_FILE = iota
 	NO_CAPS
@@ -42,12 +40,13 @@ const (
 	DEFAULT
 )
 
+// Mirrors: -domain flag consts.
 var domains = map[string]bool{
 	"hk": true,
 	// "life": true,
 }
 
-// Block for wipe, sorry.
+// Banned boards, block for -board flag.
 var banned = map[string]bool{
 	"rm":   true,
 	"math": true,
@@ -56,47 +55,46 @@ var banned = map[string]bool{
 }
 
 var (
+	// General wipe mode settings.
+	wipeMode       = flag.Uint64("mode", SHRAPNEL, "режим вайпа:\n\t0 - один тред\n\t1 - шрапнель\n\t2 - создание")
+	textMode       = flag.Uint64("text", FROM_FILE, "тексты постов:\n\t0 - брать из файла\n\t1 - без текста\n\t2 - шизобред\n\t3 - из постов\n\t4 - дефолтные")
+	antiCaptcha    = flag.Uint64("captcha", OCR, "антикапча:\n\t0 - RuCaptcha\n\t1 - OCR")
+	antiCaptchaKey = flag.String("key", "", "ключ API антикапчи, либо пасскод.")
+
+	// Post settings.
+	board    = flag.String("board", "b", "доска.")
+	thread   = flag.Uint64("thread", 0, "ID треда, если вайпаем один тред.")
+	files    = flag.Uint64("files", 0, "кол-во прикрепляемых файлов.")
 	useProxy = flag.Bool("proxy", false, "вайпать с проксями.")
 	useSage  = flag.Bool("sage", false, "клеить сажу.")
 	colorize = flag.Bool("masks", false, "цветовые маски для картинок.")
 
-	wipeMode       = flag.Uint64("mode", SHRAPNEL, "режим вайпа:\n\t0 - один тред\n\t1 - шрапнель\n\t2 - создание")
-	wait           = flag.Uint64("wait", 20, "ждём секунд печеньки")
-	textMode       = flag.Uint64("text", FROM_FILE, "тексты постов:\n\t0 - брать из файла\n\t1 - без текста\n\t2 - шизобред\n\t3 - из постов\n\t4 - дефолтные")
-	antiCaptcha    = flag.Uint64("captcha", OCR, "антикапча:\n\t0 - RuCaptcha\n\t1 - OCR")
-	antiCaptchaKey = flag.String("key", "", "ключ API антикапчи.")
-
-	board  = flag.String("board", "b", "доска.")
-	thread = flag.Uint64("thread", 0, "ID треда, если вайпаем один тред.")
-
-	files = flag.Uint64("files", 0, "кол-во прикрепляемых файлов.")
-
+	// Path settings.
 	filesPath = flag.String("file-path", "./res/files/", "директория с файлами.")
 	capsPath  = flag.String("caption-path", "./res/captions.conf", "файл с текстами постов.")
 	proxyPath = flag.String("proxy-path", "./res/proxies.conf", "файл с проксями.")
 
+	// Wipe flow settings.
 	threads = flag.Uint64("t", 1, "кол-во потоков.")
 	iters   = flag.Uint64("i", 1, "кол-во проходов.")
 	timeout = flag.Uint64("T", 0, "перерыв между проходами (сек.)")
 
+	// Additional settings.
 	bufsize = flag.Uint64("buffer", 0, "размер буфера каналов.")
 	limit   = flag.Uint64("limit", 1, "макс. число ошибок соединения для прокси перед удалением.")
 	verbose = flag.Bool("v", false, "доп. логи для отладки.")
 	domain  = flag.String("domain", "hk", "зеркало.\n\thk\n\tlife (depricated)")
+	wait    = flag.Uint64("wait", 20, "ждём секунд печеньки")
 
+	// Cloudflare init settings.
 	initAtOnce = flag.Uint64("I", 1, "кол-во параллельно инициализируемых прокси.")
 	sessions   = flag.Uint64("s", 1, "кол-во сессий на одну проксю (подробнее в документации).")
 )
 
+// If we want to use captions, but text initialization has failed.
 var defaultCaptions = []string{
 	"ALO YOBA ETO TI?",
 	"NET, ON U BABUSHKI EST OLADUSHKI."}
-
-var notImplemented = func(x string) error {
-	return fmt.Errorf("%s ещё не реализовано.", x)
-}
-
-type Header string
 
 type Mode struct {
 	WipeMode    uint8
@@ -126,22 +124,25 @@ type WipeSettings struct {
 }
 
 type Env struct {
-	//Metadata
 	Mode
 	PostSettings
 	WipeSettings
 	*Content
 
+	// Anti-captcha api key or passcode (yet not implemented)
 	Key string
 
-	Logger  chan string        // Global synced logger.
-	Filter  chan network.Proxy // Global synced proxy filter.
-	Status  chan bool          // True if post send, false if failed.
+	Logger chan string        // Global synced logger.
+	Filter chan network.Proxy // Global synced proxy filter.
+	Status chan bool          // Global synced counter; True if post send, false if failed.
+
+	// -v flag for verbose logging.
 	Verbose bool
 
 	// How many times proxy can fail HTTP request to captcha before get deleted.
 	FailedConnectionsLimit uint64
 
+	// -domain flag, depricated.
 	Domain string
 
 	// How many web driver instances will be spawned at once.
@@ -150,8 +151,7 @@ type Env struct {
 	Sessions uint64
 }
 
-// Get all files which we can post from dir folder.
-// They will be loaded at memory once, then we'll use them for posting without loading again.
+// Load to memory all the media files (.png, .jpg, etc) that file-path contains.
 // 2 * 10^7 bytes is the size limit for single file.
 func getFiles(dir string) ([]File, error) {
 	cont, err := os.ReadDir(dir)
@@ -197,7 +197,8 @@ func getFiles(dir string) ([]File, error) {
 	return files, nil
 }
 
-func getNSplit(dir, pattern string) ([]string, error) {
+// Read file and split it's content by pattern.
+func splitFileContent(dir, pattern string) ([]string, error) {
 	cont, err := ioutil.ReadFile(dir)
 	if err != nil {
 		return nil, err
@@ -205,14 +206,15 @@ func getNSplit(dir, pattern string) ([]string, error) {
 	return strings.Split(string(cont), pattern), nil
 }
 
+// Get all captions separated by double blank line.
 func getCaptions(dir string) ([]string, error) {
-	return getNSplit(dir, "\n\n")
+	return splitFileContent(dir, "\n\n")
 }
 
-// Get all valid-formated proxies from dir.
+// Get all valid-formated proxies from directory.
 func getProxies(dir string, sessions int) ([]network.Proxy, error) {
 	result := make([]network.Proxy, 0)
-	proxies, err := getNSplit(dir, "\n")
+	proxies, err := splitFileContent(dir, "\n")
 	if err != nil {
 		return result, fmt.Errorf("не смогла прочесть файл с проксями: err = %v", err)
 	}
@@ -233,7 +235,7 @@ func getProxies(dir string, sessions int) ([]network.Proxy, error) {
 	return result, nil
 }
 
-// Call this before init captions.
+// Init all valid media files to env.Files. Should be called before initing captions.
 func (env *Env) parseFiles(dir string) {
 	env.Files = make([]File, 0)
 	if env.FilesPerPost != 0 {
@@ -250,7 +252,7 @@ func (env *Env) parseFiles(dir string) {
 	}
 }
 
-// Parse all captions (post's texts) to env.Captions.
+// Init all captions (post's texts) to env.Captions.
 func (env *Env) parseCaptions(dir string) {
 	switch env.TextMode {
 	case NO_CAPS:
@@ -290,7 +292,7 @@ func (env *Env) parseCaptions(dir string) {
 	}
 }
 
-// Check for validness and parse all proxies to env.Proxies with []network.Proxy type.
+// Check for validness and parse all proxies to env.Proxies.
 func (env *Env) parseProxies(dir string) {
 	if env.UseProxy {
 		log.Println("инициализирую прокси...")
@@ -303,6 +305,7 @@ func (env *Env) parseProxies(dir string) {
 	}
 }
 
+// Parse all user input and return user environment struct.
 func ParseEnv() (*Env, error) {
 	flag.Parse()
 	log.SetFlags(log.Ltime)
@@ -338,6 +341,7 @@ func ParseEnv() (*Env, error) {
 		InitAtOnce:             *initAtOnce,
 		Sessions:               *sessions,
 	}
+	// Processing input errors.
 	if env.InitAtOnce == 0 {
 		return nil, fmt.Errorf("ошибка, -init должен быть больше нуля.")
 	}
@@ -360,7 +364,7 @@ func ParseEnv() (*Env, error) {
 		return nil, fmt.Errorf("ошибка, ID треда указан, но режим не SingleThread.")
 	}
 	if env.AntiCaptcha != RUCAPTCHA && env.AntiCaptcha != OCR {
-		return nil, notImplemented("антикапча, кроме RuCaptcha или OCR")
+		return nil, fmt.Errorf("ошибка, пока доступны только OCR и RuCaptcha.")
 	}
 
 	env.parseFiles(*filesPath)
