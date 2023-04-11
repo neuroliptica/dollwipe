@@ -5,7 +5,6 @@ package engine
 
 import (
 	"dollwipe/captcha"
-	"dollwipe/content"
 	"dollwipe/env"
 	"dollwipe/network"
 	"encoding/json"
@@ -19,8 +18,7 @@ import (
 )
 
 const (
-	WAIT_TIME = 20 // Proxy connection sleep.
-	OK        = iota
+	OK = iota
 )
 
 // Makaba's posting error codes.
@@ -107,7 +105,7 @@ func (post *Post) InitPostCookiesAndHeaders() error {
 	var err error
 	post.Cookies, post.Headers, err = env.GetCookiesAndHeaders(
 		post.Proxy,
-		time.Second*WAIT_TIME)
+		time.Second*time.Duration(post.Env.WaitTime))
 	return err
 }
 
@@ -138,7 +136,7 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		auth := network.MakeProxyAuthHeader(post.Proxy)
 		req.Header.Add("Proxy-Authorization", auth)
 	}
-	var transport *http.Transport
+	transport := network.MakeTransport(post.Proxy)
 	if post.Env.UseProxy {
 		transport.ProxyConnectHeader = req.Header
 	}
@@ -265,7 +263,7 @@ func (post *Post) MakeFilesMap() (map[string][]byte, error) {
 		file := post.Env.Files[(l+i)%len(post.Env.Files)]
 		cont := file.Content
 		if post.Env.Colorize {
-			cont = content.Colorize(&file)
+			cont = file.Colorize()
 		}
 		if len(cont) > limit {
 			continue

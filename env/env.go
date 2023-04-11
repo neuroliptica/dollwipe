@@ -147,8 +147,14 @@ type Env struct {
 
 	// How many web driver instances will be spawned at once.
 	InitAtOnce uint64
+
 	// Cookie sessions for one proxy.
 	Sessions uint64
+
+	// Seconds to wait until cloudflare challenge will load.
+	// Note -- this is not a timeout for the connection.
+	// This one works when and only when connection was successful.
+	WaitTime uint64
 }
 
 // Load to memory all the media files (.png, .jpg, etc) that file-path contains.
@@ -340,6 +346,7 @@ func ParseEnv() (*Env, error) {
 		Domain:                 *domain,
 		InitAtOnce:             *initAtOnce,
 		Sessions:               *sessions,
+		WaitTime:               *wait,
 	}
 	// Processing input errors.
 	if env.InitAtOnce == 0 {
