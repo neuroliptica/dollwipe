@@ -13,11 +13,6 @@ import (
 	"time"
 )
 
-type (
-	SingleInitDone struct{}
-	InitDone       struct{}
-)
-
 const (
 	POST_FAILED = iota
 	POST_OK
@@ -66,8 +61,6 @@ func main() {
 	// This part will spawn goroutine for every Post instance.
 	// Then will wait until Posts initialization is not finished.
 	initResponse := make(chan engine.InitPostResponse)
-	//initDone := make(chan InitDone)
-	//singleInitDone := make(chan SingleInitDone)
 
 	var Init, SingleInit sync.WaitGroup
 	Init.Add(1)
@@ -87,8 +80,6 @@ func main() {
 				"OK: %3d; FAIL: %3d", len(Posts), failed)
 			SingleInit.Done()
 
-			//singleInitDone <- SingleInitDone{}
-
 			if failed+len(Posts) == len(lenv.Proxies) {
 				return
 			}
@@ -97,20 +88,11 @@ func main() {
 
 	// Init partially; InitAtOnce is corresponding to -I flag value.
 	for i := 0; i < len(lenv.Proxies); i += int(lenv.InitAtOnce) {
-		//launched := 0
 		for j := 0; j < int(lenv.InitAtOnce) && i+j < len(lenv.Proxies); j++ {
 			SingleInit.Add(1)
 			go engine.InitPost(lenv, lenv.Proxies[i+j], initResponse)
-			//launched++
 		}
 		SingleInit.Wait()
-		//done := 0
-		//for _ = range singleInitDone {
-		//	done++
-		//	if done == launched {
-		//		break
-		//	}
-		//}
 	}
 	// Block until initialization is done.
 	Init.Wait()
