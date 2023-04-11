@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -65,10 +66,13 @@ func main() {
 	// This part will spawn goroutine for every Post instance.
 	// Then will wait until Posts initialization is not finished.
 	initResponse := make(chan engine.InitPostResponse)
-	initDone := make(chan InitDone)
-	singleInitDone := make(chan SingleInitDone)
+	//initDone := make(chan InitDone)
+	//singleInitDone := make(chan SingleInitDone)
 
+	var Init, SingleInit sync.WaitGroup
+	Init.Add(1)
 	go func() {
+		defer Init.Done()
 		failed := 0
 		for v := range initResponse {
 			if v.Post() == nil {
@@ -81,10 +85,11 @@ func main() {
 			}
 			lenv.Logger <- fmt.Sprintf(
 				"OK: %3d; FAIL: %3d", len(Posts), failed)
-			singleInitDone <- SingleInitDone{}
+			SingleInit.Done()
+
+			//singleInitDone <- SingleInitDone{}
 
 			if failed+len(Posts) == len(lenv.Proxies) {
-				initDone <- InitDone{}
 				return
 			}
 		}
@@ -92,21 +97,23 @@ func main() {
 
 	// Init partially; InitAtOnce is corresponding to -I flag value.
 	for i := 0; i < len(lenv.Proxies); i += int(lenv.InitAtOnce) {
-		launched := 0
+		//launched := 0
 		for j := 0; j < int(lenv.InitAtOnce) && i+j < len(lenv.Proxies); j++ {
+			SingleInit.Add(1)
 			go engine.InitPost(lenv, lenv.Proxies[i+j], initResponse)
-			launched++
+			//launched++
 		}
-		done := 0
-		for _ = range singleInitDone {
-			done++
-			if done == launched {
-				break
-			}
-		}
+		SingleInit.Wait()
+		//done := 0
+		//for _ = range singleInitDone {
+		//	done++
+		//	if done == launched {
+		//		break
+		//	}
+		//}
 	}
 	// Block until initialization is done.
-	<-initDone
+	Init.Wait()
 
 	if len(Posts) == 0 {
 		lenv.Logger <- "ошибка, не удалось инициализировать ни одной прокси."
@@ -114,7 +121,7 @@ func main() {
 	}
 	if lenv.UseProxy {
 		lenv.Logger <- fmt.Sprintf(
-			"проксей инициализировано - %d.", len(lenv.Proxies))
+			"проксей инициализировано - %d.", len(Posts))
 	}
 
 	// Thread safe bad proxies filter.
