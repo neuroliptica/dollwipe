@@ -50,7 +50,10 @@ func main() {
 	// will be count as a proxy in proxy map. Despite this, it
 	// will never be set as a normal proxy. So all the requests
 	// will be performed through our own ip.
-	var Posts = make(map[network.Proxy]*engine.Post, 0)
+	var (
+		Posts      = make(map[network.Proxy]*engine.Post, 0)
+		PostsMutex sync.Mutex // Between filter goroutine and main.
+	)
 	if !lenv.UseProxy {
 		localhost := network.Proxy{
 			Addr: "localhost",
@@ -102,18 +105,20 @@ func main() {
 		os.Exit(0)
 	}
 	if lenv.UseProxy {
-		lenv.Logger <- fmt.Sprintf(
-			"проксей инициализировано - %d.", len(Posts))
+		lenv.Logger <- fmt.Sprintf("проксей инициализировано - %d.", len(Posts))
 	}
 
 	// Thread safe bad proxies filter.
 	go func() {
 		for proxy := range lenv.Filter {
+			PostsMutex.Lock()
 			delete(Posts, proxy)
+			PostsMutex.Unlock()
 		}
 	}()
 
 	for i := uint64(0); i < lenv.Iters; i++ {
+		PostsMutex.Lock() // Block for filter until init done.
 		var (
 			alive = make([]network.Proxy, 0)
 			used  = uint64(0)
@@ -131,9 +136,12 @@ func main() {
 		lenv.Logger <- fmt.Sprintf(
 			"итерация %d; постов будет отправлено - %d; перерыв - %d сек.",
 			i+1, used, lenv.Timeout)
+
 		for j := uint64(0); j < used; j++ {
 			go engine.RunPost(Posts[alive[j]])
 		}
+		//
+		PostsMutex.Unlock()
 
 		postsOk, postsFail := 0, 0
 		for uint64(postsOk+postsFail) != used {
@@ -147,10 +155,14 @@ func main() {
 		lenv.Logger <- fmt.Sprintf(
 			"Успешно отправлено - %d; всего отправлено - %d.",
 			postsOk, postsOk+postsFail)
+
+		PostsMutex.Lock() // Wait until filter is done.
 		if len(Posts) == 0 {
 			lenv.Logger <- "все проксичи умерли, помянем."
 			os.Exit(0)
 		}
+		PostsMutex.Unlock()
+
 		if i+1 != lenv.Iters {
 			time.Sleep(time.Second * time.Duration(lenv.Timeout))
 		}
