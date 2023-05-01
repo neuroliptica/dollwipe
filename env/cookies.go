@@ -18,6 +18,7 @@ package env
 
 import (
 	"dollwipe/network"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -32,6 +33,9 @@ const (
 
 // Value type for header pair.
 type Header string
+
+// Logging callback function signature.
+type LogCallback = func(...interface{})
 
 // Cast proto.NetworkCookie to http.Cookie.
 func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
@@ -62,7 +66,7 @@ func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
 // Create webdriver instance and pass it's requests through custom middleware.
 // Error will be returned if some of the requests has failed. Otherwise re-
 // turn value should be processed as a successful, even if it is empty.
-func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Cookie, error) {
+func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration, logger LogCallback) ([]*http.Cookie, error) {
 	browser := rod.New().Timeout(2 * time.Minute).MustConnect()
 	defer browser.Close()
 
@@ -106,7 +110,8 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 			Transport: transport,
 			Timeout:   2 * time.Minute,
 		}
-		// fmt.Println(ctx.Response.Payload().ResponseCode, ctx.Request.URL())
+		logger(fmt.Sprintf("[rod-debug] [%d] %s",
+			ctx.Response.Payload().ResponseCode, ctx.Request.URL()))
 		ctx.LoadResponse(&client, true)
 	})
 	go router.Run()
@@ -132,8 +137,8 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 }
 
 // Create browser instance, pass cloudflare, get cookies and headers.
-func GetCookiesAndHeaders(p network.Proxy, wait time.Duration) ([]*http.Cookie, map[string]Header, error) {
-	cookies, err := MakeRequestWithMiddleware(p, wait)
+func GetCookiesAndHeaders(p network.Proxy, wait time.Duration, logger LogCallback) ([]*http.Cookie, map[string]Header, error) {
+	cookies, err := MakeRequestWithMiddleware(p, wait, logger)
 	if err != nil {
 		return nil, nil, err
 	}

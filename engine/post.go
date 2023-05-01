@@ -105,7 +105,8 @@ func (post *Post) InitPostCookiesAndHeaders() error {
 	var err error
 	post.Cookies, post.Headers, err = env.GetCookiesAndHeaders(
 		post.Proxy,
-		time.Second*time.Duration(post.Env.WaitTime))
+		time.Second*time.Duration(post.Env.WaitTime),
+		post.Verbose)
 	return err
 }
 
