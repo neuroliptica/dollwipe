@@ -24,14 +24,14 @@ $ make build
 
 Компилятор Go для винды ставьте отдельно и добавляйте его в PATH. Установка остальных зависимостей:
 
-```powershell 
+```bash
 > pacman -Syu
 > pacman -S mingw-w64-x86_64-gtk3 mingw-w64-x86_64-vala mingw-w64-x86_64-make
 ```
 
 Далее добавьте полный путь до `msys2/mingw64/bin` в PATH. Собственно сборка:
 
-```powershell 
+```bash
 > git clone https://github.com/neuroliptica/dollwipe.git
 > cd dollwipe
 > make build
