@@ -16,10 +16,22 @@ import (
 const (
 	POST_FAILED = iota
 	POST_OK
+
+	logo = `
+     _       _ _          _            
+    | |     | | |        (_)           
+  __| | ___ | | |_      ___ _ __   ___ 
+ / _' |/ _ \| | \ \ /\ / / | '_ \ / _ \
+| (_| | (_) | | |\ V  V /| | |_) |  __/
+ \__,_|\___/|_|_| \_/\_/ |_| .__/ \___|
+                           | |         
+                           |_|         
+	`
 )
 
 func main() {
 	log.SetFlags(log.Ltime)
+	fmt.Println(logo)
 	lenv, err := env.ParseEnv()
 	if err != nil {
 		log.Fatal(err)
