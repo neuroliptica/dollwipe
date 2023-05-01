@@ -18,7 +18,6 @@ package env
 
 import (
 	"dollwipe/network"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -107,7 +106,7 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration) ([]*http.Coo
 			Transport: transport,
 			Timeout:   2 * time.Minute,
 		}
-		fmt.Println(ctx.Response.Payload().ResponseCode, ctx.Request.URL())
+		// fmt.Println(ctx.Response.Payload().ResponseCode, ctx.Request.URL())
 		ctx.LoadResponse(&client, true)
 	})
 	go router.Run()

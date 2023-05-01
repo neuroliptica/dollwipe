@@ -136,7 +136,7 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 		auth := network.MakeProxyAuthHeader(post.Proxy)
 		req.Header.Add("Proxy-Authorization", auth)
 	}
-	var transport *http.Transport
+	transport := network.MakeTransport(post.Proxy)
 	if post.Env.UseProxy {
 		transport.ProxyConnectHeader = req.Header
 	}
