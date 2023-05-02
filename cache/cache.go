@@ -4,8 +4,8 @@ package cache
 
 import (
 	"dollwipe/engine"
+	"dollwipe/logger"
 	"dollwipe/network"
-	"log"
 	"os"
 	"strings"
 )
@@ -44,8 +44,8 @@ func (packed PostsCache) CachePack(dir string) error {
 	}
 	fname, path := GetPath(dir)
 	if fname == "" {
-		log.Println("[cache] using default name => ./cache_tmp")
 		fname = "cache_tmp"
+		logger.Cache.Logf("using default name => ./%s", fname)
 		dir = path + "/" + fname
 	}
 	var err error

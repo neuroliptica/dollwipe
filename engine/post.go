@@ -93,9 +93,11 @@ type Post struct {
 // General logging purpose method.
 func (post *Post) Log(msg ...interface{}) {
 	post.PostLogger.Log(msg...)
+}
 
-	//post.Env.Logger <- fmt.Sprintf("[%s] %2s",
-	//	post.Proxy.StringSid(), fmt.Sprint(msg...))
+// Logging with format.
+func (post *Post) Logf(format string, msg ...interface{}) {
+	post.PostLogger.Logf(format, msg...)
 }
 
 // Extra logs when -v flag is set.
@@ -282,8 +284,8 @@ func (post *Post) MakeFilesMap() (map[string][]byte, error) {
 		return nil, fmt.Errorf("все файлы превышают допустимый размер.")
 	}
 	if n != post.Env.FilesPerPost {
-		post.Log(fmt.Sprintf("%d/%d файлов будет прикреплено, суммарный размер превышает 20МБ.",
-			n, post.Env.FilesPerPost))
+		post.Logf("%d/%d файлов будет прикреплено, суммарный размер превышает 20МБ.",
+			n, post.Env.FilesPerPost)
 	}
 	return files, nil
 }

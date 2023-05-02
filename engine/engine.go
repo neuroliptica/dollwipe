@@ -8,7 +8,6 @@ import (
 	"dollwipe/env"
 	"dollwipe/logger"
 	"dollwipe/network"
-	"fmt"
 	"net/http"
 	"os"
 )
@@ -84,8 +83,7 @@ func responseHandler(post *Post, code int32) {
 	case ERROR_INVALID_CAPTCHA, ERROR_TOO_FAST:
 		break
 	default:
-		post.Log(fmt.Sprintf(
-			"неизвестный код = %d; меня пока не научили на это правильно реагировать.", code))
+		post.Logf("неизвестный код = %d; меня пока не научили на это правильно реагировать.", code)
 	}
 	post.Env.Status <- false
 }
@@ -102,14 +100,14 @@ func captchaIdErrorHandler(post *Post, cerr *captcha.CaptchaIdError) {
 			post.Log(cerr.Extra)
 		}
 		post.HTTPFailed++
-		post.Log(fmt.Sprintf("%d/%d, не удалось подключиться, ошибка получения капчи.",
-			post.HTTPFailed, post.Env.FailedConnectionsLimit))
+		post.Logf("%d/%d, не удалось подключиться, ошибка получения капчи.",
+			post.HTTPFailed, post.Env.FailedConnectionsLimit)
 		if post.HTTPFailed >= post.Env.FailedConnectionsLimit {
 			post.Log("прокся исчерпала попытки, удаляю.")
 			post.Env.Filter <- post.Proxy
 		}
 	default:
-		post.Log(fmt.Sprintf("id=%d: неизвестная ошибка при получении капчи.", cerr.ErrorId))
+		post.Logf("id=%d: неизвестная ошибка при получении капчи.", cerr.ErrorId)
 	}
 	post.Env.Status <- false
 }
@@ -136,7 +134,7 @@ func RunPost(post *Post) {
 		failed(err)
 		return
 	}
-	post.Log(fmt.Sprintf("капча решена успешно: %s", post.CaptchaValue))
+	post.Logf("капча решена успешно: %s", post.CaptchaValue)
 
 	params, err := post.MakeParamsMap()
 	if err != nil { // This will appear only if we can't get a random thread.
@@ -159,8 +157,6 @@ func RunPost(post *Post) {
 		failed(err)
 		return
 	}
-	post.Log(fmt.Sprintf("%d: %s",
-		response.Code(),
-		response.Message()))
+	post.Logf("%d: %s", response.Code(), response.Message())
 	responseHandler(post, response.Code())
 }
