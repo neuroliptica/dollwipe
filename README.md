@@ -1,7 +1,7 @@
 # dollwipe
 Дочка [вот этого чуда](https://github.com/neuroliptica/traumatic), переписанная с учётом ошибок своего предка.
 
-![cli](https://imgur.com/iQk0QHP.png)
+![cli](https://imgur.com/Ehk13iR.png)
 
 ## Имеет
 - Простенький графический интерфейс.
