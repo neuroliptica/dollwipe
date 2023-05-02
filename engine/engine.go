@@ -6,6 +6,7 @@ package engine
 import (
 	"dollwipe/captcha"
 	"dollwipe/env"
+	"dollwipe/logger"
 	"dollwipe/network"
 	"fmt"
 	"net/http"
@@ -37,6 +38,8 @@ func InitPost(penv *env.Env, proxy network.Proxy, ch chan<- InitPostResponse) {
 		HTTPFailed: 0,
 		Headers:    make(map[string]env.Header, 0),
 		Cookies:    make([]*http.Cookie, 0),
+
+		PostLogger: logger.MakeLogger(proxy.String(), penv.Logger),
 	}
 	post.Log("получаю печенюшки...")
 

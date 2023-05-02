@@ -4,14 +4,13 @@
 package env
 
 import (
+	"dollwipe/logger"
 	"dollwipe/network"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
-	"strings"
 )
 
 // WipeMode: -mode flag consts.
@@ -157,158 +156,78 @@ type Env struct {
 	WaitTime uint64
 }
 
-// Load to memory all the media files (.png, .jpg, etc) that file-path contains.
-// 2 * 10^7 bytes is the size limit for single file.
-func getFiles(dir string) ([]File, error) {
-	cont, err := os.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
-	if !strings.HasSuffix(dir, "/") {
-		dir += "/"
-	}
-	var (
-		files  []File
-		failed = 0
-		pred   = func(name string) bool {
-			name = strings.ToLower(name)
-			return strings.HasSuffix(name, ".jpg") ||
-				strings.HasSuffix(name, ".png") ||
-				strings.HasSuffix(name, ".jpeg") ||
-				strings.HasSuffix(name, ".mp4") ||
-				strings.HasSuffix(name, ".webm") ||
-				strings.HasSuffix(name, ".gif")
-		}
-	)
-	for _, file := range cont {
-		if pred(file.Name()) {
-			fname := dir + file.Name()
-			cont, err := ioutil.ReadFile(fname)
-			if err != nil {
-				failed++
-				continue
-			}
-			if len(cont) > 2e7 { // 20MB is the limit.
-				log.Printf("%s: размер файла превышает допустимый.", fname)
-				failed++
-				continue
-			}
-			files = append(files, File{Name: fname, Content: cont})
-		}
-	}
-	if len(files) == 0 {
-		return nil, fmt.Errorf("%s: не нашла подходящие файлы (.png, .mp4, etc.)", dir)
-	}
-	log.Printf("%d/%d файлов инициализировано.", len(files), len(files)+failed)
-	return files, nil
-}
-
-// Read file and split it's content by pattern.
-func splitFileContent(dir, pattern string) ([]string, error) {
-	cont, err := ioutil.ReadFile(dir)
-	if err != nil {
-		return nil, err
-	}
-	return strings.Split(string(cont), pattern), nil
-}
-
-// Get all captions separated by double blank line.
-func getCaptions(dir string) ([]string, error) {
-	return splitFileContent(dir, "\n\n")
-}
-
-// Get all valid-formated proxies from directory.
-func getProxies(dir string, sessions int) ([]network.Proxy, error) {
-	result := make([]network.Proxy, 0)
-	proxies, err := splitFileContent(dir, "\n")
-	if err != nil {
-		return result, fmt.Errorf("не смогла прочесть файл с проксями: err = %v", err)
-	}
-	for _, addr := range proxies {
-		proxy, err := getProxy(addr)
-		if err != nil {
-			log.Printf("%s: %v", addr, err)
-			continue
-		}
-		for i := 0; i < sessions; i++ {
-			result = append(result, proxy)
-			proxy.SessionId++
-		}
-	}
-	if len(result) == 0 {
-		return result, fmt.Errorf("не смогла найти ни одной валидной прокси.")
-	}
-	return result, nil
-}
-
 // Init all valid media files to env.Files. Should be called before initing captions.
-func (env *Env) parseFiles(dir string) {
+func (env *Env) initEnvFiles(dir string) *Env {
 	env.Files = make([]File, 0)
 	if env.FilesPerPost != 0 {
-		log.Println("инициализирую картинки...")
-		cont, err := getFiles(dir)
+		logger.Files.Log("инициализирую картинки...")
+		cont, err := GetMedia(dir)
 		if err == nil {
 			env.Files = cont
 			env.FilesPerPost = uint8(math.Min(float64(len(env.Files)), float64(env.FilesPerPost)))
-			return
+			return env
 		}
-		log.Println(err)
-		log.Println("ошибка инициализации, буду продолжать без использования файлов.")
+		logger.Files.Logf("ошибка инициализации: %v", err)
+		logger.Files.Log("буду продолжать без использования файлов.")
 		env.FilesPerPost = 0
 	}
+	return env
 }
 
 // Init all captions (post's texts) to env.Captions.
-func (env *Env) parseCaptions(dir string) {
+func (env *Env) initEnvCaptions(dir string) *Env {
 	switch env.TextMode {
 	case NO_CAPS:
 		if env.FilesPerPost == 0 {
-			log.Println("ошибка, не могу постить без текста и без картинок.")
+			logger.Captions.Log("ошибка, не могу постить без текста и без картинок.")
 			os.Exit(1)
 		}
 		env.Captions = []string{""}
 	case DEFAULT:
-		log.Println("буду использовать дефолтные тексты.")
+		logger.Captions.Log("буду использовать дефолтные тексты.")
 		env.Captions = defaultCaptions
 	case SCHIZO:
-		log.Println("SCHIZO not implemented yet")
+		logger.Captions.Log("SCHIZO not implemented yet")
 		os.Exit(0)
 	case FROM_POSTS:
-		log.Printf("получаю каталог тредов /%s/...", env.Board)
+		logger.Captions.Logf("получаю каталог тредов /%s/...", env.Board)
 		caps, err := getPostsTexts(env.Board)
 		if err != nil {
-			log.Printf("ошибка получения постов: %v", err)
-			log.Println("буду использовать дефолтные тексты.")
+			logger.Captions.Logf("ошибка получения постов: %v", err)
+			logger.Captions.Log("буду использовать дефолтные тексты.")
 			env.Captions = defaultCaptions
-			return
+			return env
 		}
 		env.Captions = caps
 	case FROM_FILE:
-		log.Println("инициализирую тексты постов...")
-		caps, err := getCaptions(dir)
+		logger.Captions.Log("инициализирую тексты постов...")
+		caps, err := GetCaptions(dir)
 		if err == nil {
 			env.Captions = caps
-			log.Printf("ok, %d текстов инициализировано.", len(caps))
-			return
+			logger.Captions.Logf("ok, %d текстов инициализировано.", len(caps))
+			return env
 		}
-		log.Println("ошибка инициализации, буду использовать дефолтные тексты.")
+		logger.Captions.Log("ошибка инициализации, буду использовать дефолтные тексты.")
 		env.Captions = defaultCaptions
 	default:
-		log.Fatal("неизветсный режим текста постов: %d, фатальная ошибка.", env.TextMode)
+		logger.Captions.Logf("неизвестный режим текста постов: %d, фатальная ошибка.", env.TextMode)
 	}
+	return env
 }
 
 // Check for validness and parse all proxies to env.Proxies.
-func (env *Env) parseProxies(dir string) {
+func (env *Env) initEnvProxies(dir string) *Env {
 	if env.UseProxy {
-		log.Println("инициализирую прокси...")
-		proxies, err := getProxies(dir, int(env.Sessions))
+		logger.Proxies.Log("инициализирую прокси...")
+		proxies, err := GetProxies(dir, int(env.Sessions))
 		if err != nil {
-			log.Println(err)
-			log.Fatal("ошибка инициализации, не удалось инициализировать прокси, фатальная ошибка.")
+			logger.Proxies.Logf("ошибка инициализации: %v", err)
+			logger.Proxies.Log("не удалось инициализировать прокси, фатальная ошибка.")
+			os.Exit(0)
 		}
 		env.Proxies = proxies
 	}
+	return env
 }
 
 // Parse all user input and return user environment struct.
@@ -350,7 +269,7 @@ func ParseEnv() (*Env, error) {
 	}
 	// Processing input errors.
 	if env.InitAtOnce == 0 {
-		return nil, fmt.Errorf("ошибка, -init должен быть больше нуля.")
+		return nil, fmt.Errorf("ошибка, -I должен быть больше нуля.")
 	}
 	if env.Sessions == 0 {
 		return nil, fmt.Errorf("ошибка, -s должен быть больше нуля.")
@@ -374,12 +293,13 @@ func ParseEnv() (*Env, error) {
 		return nil, fmt.Errorf("ошибка, пока доступны только OCR и RuCaptcha.")
 	}
 
-	env.parseFiles(*filesPath)
+	env.initEnvFiles(*filesPath).
+		initEnvCaptions(*capsPath).
+		initEnvProxies(*proxyPath)
+
 	if env.FilesPerPost == 0 && env.WipeMode == CREATING {
 		return nil, fmt.Errorf("для создания тредов нужен хотя бы один файл!")
 	}
-	env.parseCaptions(*capsPath)
-	env.parseProxies(*proxyPath)
 
 	return &env, nil
 }

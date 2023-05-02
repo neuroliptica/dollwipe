@@ -1,8 +1,10 @@
 package main
 
 import (
+	"dollwipe/cache"
 	"dollwipe/engine"
 	"dollwipe/env"
+	"dollwipe/logger"
 	"dollwipe/network"
 	"fmt"
 	"log"
@@ -16,7 +18,6 @@ import (
 const (
 	POST_FAILED = iota
 	POST_OK
-
 	logo = `
      _       _ _          _            
     | |     | | |        (_)           
@@ -29,24 +30,29 @@ const (
 	`
 )
 
+// Save alive proxies before exit.
+func CacheAliveProxies(posts map[network.Proxy]*engine.Post) {
+	filename := "alive_proxies.cache"
+	err := cache.PostsCache(posts).CachePack(filename)
+	if err != nil {
+		logger.Cache.Log("не смогла сохранить живые прокси: ", err)
+	}
+	logger.Cache.Logf("сохранила живые прокси => %s", filename)
+}
+
 func main() {
 	log.SetFlags(log.Ltime)
+	go logger.GlobalLogger(logger.MainLogger)
+
 	fmt.Println(logo)
 	lenv, err := env.ParseEnv()
 	if err != nil {
-		log.Fatal(err)
+		logger.Init.Log("error: ", err)
+		os.Exit(0)
 	}
-	// Thread safe logging purpose goroutine. All future logging
-	// should be done through the lenv.Logger channel.
-	//
-	// ex: lenv.Logger <- log_message
-	go func() {
-		for msg := range lenv.Logger {
-			log.Println(msg)
-		}
-	}()
+	lenv.Logger = logger.MainLogger
 
-	// Thread safe statistics counter.
+	// Statistics counter.
 	postsUpdate := make(chan int)
 	go func() {
 		for ok := range lenv.Status {
@@ -77,10 +83,10 @@ func main() {
 	// Then will wait until Posts initialization is not finished.
 	initResponse := make(chan engine.InitPostResponse)
 
-	var Init, SingleInit sync.WaitGroup
-	Init.Add(1)
+	var PostsInit, SingleInit sync.WaitGroup
+	PostsInit.Add(1)
 	go func() {
-		defer Init.Done()
+		defer PostsInit.Done()
 		failed := 0
 		for v := range initResponse {
 			if v.Post() == nil {
@@ -91,8 +97,7 @@ func main() {
 				})
 				Posts[v.Proxy] = v.Post()
 			}
-			lenv.Logger <- fmt.Sprintf(
-				"OK: %3d; FAIL: %3d", len(Posts), failed)
+			logger.Cookies.Logf("OK: %3d; FAIL: %3d", len(Posts), failed)
 			SingleInit.Done()
 
 			if failed+len(Posts) == len(lenv.Proxies) {
@@ -110,14 +115,14 @@ func main() {
 		SingleInit.Wait()
 	}
 	// Block until initialization is done.
-	Init.Wait()
+	PostsInit.Wait()
 
 	if len(Posts) == 0 {
-		lenv.Logger <- "ошибка, не удалось инициализировать ни одной прокси."
+		logger.Init.Log("ошибка, не удалось инициализировать ни одной прокси.")
 		os.Exit(0)
 	}
 	if lenv.UseProxy {
-		lenv.Logger <- fmt.Sprintf("проксей инициализировано - %d.", len(Posts))
+		logger.Proxies.Logf("проксей инициализировано - %d.", len(Posts))
 	}
 
 	// Thread safe bad proxies filter.
@@ -145,8 +150,7 @@ func main() {
 				used++
 			}
 		}
-		lenv.Logger <- fmt.Sprintf(
-			"итерация %d; постов будет отправлено - %d; перерыв - %d сек.",
+		logger.Info.Logf("итерация %d; постов будет отправлено - %d; перерыв - %d сек",
 			i+1, used, lenv.Timeout)
 
 		for j := uint64(0); j < used; j++ {
@@ -164,13 +168,12 @@ func main() {
 				postsFail++
 			}
 		}
-		lenv.Logger <- fmt.Sprintf(
-			"Успешно отправлено - %d; всего отправлено - %d.",
+		logger.Info.Logf("успешно отправлено - %d; всего отправлено - %d.",
 			postsOk, postsOk+postsFail)
 
 		PostsMutex.Lock() // Wait until filter is done.
 		if len(Posts) == 0 {
-			lenv.Logger <- "все проксичи умерли, помянем."
+			logger.Info.Log("все проксичи умерли, помянем.")
 			os.Exit(0)
 		}
 		PostsMutex.Unlock()
@@ -179,4 +182,5 @@ func main() {
 			time.Sleep(time.Second * time.Duration(lenv.Timeout))
 		}
 	}
+	CacheAliveProxies(Posts)
 }

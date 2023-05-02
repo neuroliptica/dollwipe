@@ -6,6 +6,7 @@ package engine
 import (
 	"dollwipe/captcha"
 	"dollwipe/env"
+	"dollwipe/logger"
 	"dollwipe/network"
 	"encoding/json"
 	"fmt"
@@ -82,6 +83,8 @@ type Post struct {
 	Cookies []*http.Cookie
 	Headers map[string]env.Header
 
+	PostLogger logger.Logger
+
 	CaptchaId, CaptchaValue string
 	Env                     *env.Env
 	HTTPFailed              uint64 // Failed requests counter.
@@ -89,8 +92,10 @@ type Post struct {
 
 // General logging purpose method.
 func (post *Post) Log(msg ...interface{}) {
-	post.Env.Logger <- fmt.Sprintf("%s: %2s",
-		post.Proxy.StringSid(), fmt.Sprint(msg...))
+	post.PostLogger.Log(msg...)
+
+	//post.Env.Logger <- fmt.Sprintf("[%s] %2s",
+	//	post.Proxy.StringSid(), fmt.Sprint(msg...))
 }
 
 // Extra logs when -v flag is set.
