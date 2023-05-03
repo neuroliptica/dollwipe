@@ -10,7 +10,6 @@ import (
 	"dollwipe/network"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/http/httputil"
@@ -158,11 +157,7 @@ func (post *Post) PerformReq(req *http.Request) ([]byte, error) {
 	defer resp.Body.Close()
 	post.Log(resp.Status)
 
-	cont, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return cont, nil
+	return network.ReadBody(resp.Body)
 }
 
 // Http Get request with post's headers, proxy and cookies.
