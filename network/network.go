@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -156,18 +157,40 @@ func NewPostMultipartRequest(link string, params map[string]string, files *FileF
 	return req, nil
 }
 
-// Build Http Get request, perform it and return response body.
-func SendGet(link string) ([]byte, error) {
-	resp, err := http.Get(link)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	cont, err := ioutil.ReadAll(resp.Body)
+// Read response body.
+func ReadBody(body io.Reader) ([]byte, error) {
+	cont, err := ioutil.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}
 	return cont, nil
+}
+
+// Build Http Get request, perform it and return response.
+func SendGet(url string) ([]byte, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return ReadBody(resp.Body)
+}
+
+// Build Http Post request with payload in body, perform it and return response.
+func SendPost(url string, payload []byte, headers map[string]string, transport *http.Transport) ([]byte, error) {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+	resp, err := PerformReq(req, transport)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return ReadBody(resp.Body)
 }
 
 // Perform request using transport, transport can be nil if not required.
