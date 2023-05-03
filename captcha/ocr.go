@@ -3,14 +3,11 @@
 package captcha
 
 import (
-	"bytes"
 	"dollwipe/network"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 )
 
 // Json schema for request. Body contains images in base64.
@@ -26,39 +23,35 @@ type ResponseOk struct {
 }
 
 // Local OCR instance url.
-const url = "http://127.0.0.1:7860/api/predict"
+const NeuralUrl = "http://127.0.0.1:7860/api/predict"
 
 // Solve captcha using ocr instance. Second argument is not used.
 func NeuralSolver(img []byte, key string) (string, error) {
 	body := RequestBody{
 		Data: []string{"data:image/png;base64," + base64.StdEncoding.EncodeToString(img)},
 	}
-	bodyBytes, err := json.Marshal(body)
+	payload, err := json.Marshal(body)
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Connection", "keep-alive")
+	cont, err := network.SendPost(
+		NeuralUrl,
+		payload,
+		map[string]string{
+			"Content-Type": "application/json",
+			"Connection":   "keep-alive",
+		},
+		nil)
 	if err != nil {
 		return "", err
 	}
-	resp, err := network.PerformReq(req, nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	log.Println("response Body:", string(respBody))
+	log.Println("response Body:", string(cont))
 
 	var ok ResponseOk
-	json.Unmarshal(respBody, &ok)
+	json.Unmarshal(cont, &ok)
 	if len(ok.Data) == 0 {
-		return "", fmt.Errorf(string(respBody))
+		return "", fmt.Errorf(string(cont))
 	}
 	return ok.Data[0], nil
 }
