@@ -25,3 +25,4 @@ proxies_dev.conf
 README_dev.md
 
 *.cache
+solver/solver
