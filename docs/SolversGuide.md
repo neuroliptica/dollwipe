@@ -1,4 +1,4 @@
-# Guide to catcha solvers
+# Guide to captcha solvers
 Для обхода капчи в вайпалке имеется несколько опций на выбор. 
 
 - Сервисы антикапчи (RuCaptcha)
