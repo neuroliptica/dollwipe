@@ -4,7 +4,6 @@
 package env
 
 import (
-	"dollwipe/logger"
 	"dollwipe/network"
 	"encoding/json"
 	"fmt"
@@ -119,7 +118,7 @@ func getPostsTexts(board string) ([]string, error) {
 	if len(posts) == 0 {
 		return nil, fmt.Errorf("не получилось найти ни одного поста.")
 	}
-	logger.Captions.Logf("%d/%d тредов обработано; %d постов получено.",
+	CaptionsLogger.Logf("%d/%d тредов обработано; %d постов получено.",
 		len(catalog.Threads)-failed, len(catalog.Threads), len(posts))
 	return posts, nil
 }

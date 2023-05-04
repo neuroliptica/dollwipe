@@ -4,15 +4,15 @@ import (
 	"dollwipe/cache"
 	"dollwipe/engine"
 	"dollwipe/env"
-	"dollwipe/logger"
 	"dollwipe/network"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/neuroliptica/logger"
 )
 
 const (
@@ -30,27 +30,34 @@ const (
 	`
 )
 
+var (
+	InitLogger    = logger.MakeLogger("init").BindToDefault()
+	InfoLogger    = logger.MakeLogger("info").BindToDefault()
+	CookiesLogger = logger.MakeLogger("cookies").BindToDefault()
+)
+
 // Save alive proxies before exit.
 func CacheAliveProxies(posts map[network.Proxy]*engine.Post) {
 	filename := "alive_proxies.cache"
 	err := cache.PostsCache(posts).CachePack(filename)
 	if err != nil {
-		logger.Cache.Log("не смогла сохранить живые прокси: ", err)
+		cache.CacheLogger.Logf("не смогла сохранить живые прокси: %v", err)
+		return
 	}
-	logger.Cache.Logf("сохранила живые прокси => %s", filename)
+	cache.CacheLogger.Logf("сохранила живые прокси => %s", filename)
 }
 
 func main() {
-	log.SetFlags(log.Ltime)
-	go logger.GlobalLogger(logger.MainLogger)
+	//log.SetFlags(log.Ltime)
+	//go logger.GlobalLogger(logger.MainLogger)
 
 	fmt.Println(logo)
 	lenv, err := env.ParseEnv()
 	if err != nil {
-		logger.Init.Log("error: ", err)
+		InitLogger.Logf("ошибка инициализации: %v", err)
 		os.Exit(0)
 	}
-	lenv.Logger = logger.MainLogger
+	//lenv.Logger = logger.GlobalLogger
 
 	// Statistics counter.
 	postsUpdate := make(chan int)
@@ -97,7 +104,7 @@ func main() {
 				})
 				Posts[v.Proxy] = v.Post()
 			}
-			logger.Cookies.Logf("OK: %3d; FAIL: %3d", len(Posts), failed)
+			CookiesLogger.Logf("OK: %3d; FAIL: %3d", len(Posts), failed)
 			SingleInit.Done()
 
 			if failed+len(Posts) == len(lenv.Proxies) {
@@ -118,11 +125,11 @@ func main() {
 	PostsInit.Wait()
 
 	if len(Posts) == 0 {
-		logger.Init.Log("ошибка, не удалось инициализировать ни одной прокси.")
+		InitLogger.Log("ошибка, не удалось инициализировать ни одной прокси.")
 		os.Exit(0)
 	}
 	if lenv.UseProxy {
-		logger.Proxies.Logf("проксей инициализировано - %d.", len(Posts))
+		env.ProxiesLogger.Logf("проксей инициализировано - %d.", len(Posts))
 	}
 
 	// Thread safe bad proxies filter.
@@ -150,7 +157,7 @@ func main() {
 				used++
 			}
 		}
-		logger.Info.Logf("итерация %d; постов будет отправлено - %d; перерыв - %d сек",
+		InfoLogger.Logf("итерация %d; постов будет отправлено - %d; перерыв - %d сек",
 			i+1, used, lenv.Timeout)
 
 		for j := uint64(0); j < used; j++ {
@@ -168,12 +175,12 @@ func main() {
 				postsFail++
 			}
 		}
-		logger.Info.Logf("успешно отправлено - %d; всего отправлено - %d.",
+		InfoLogger.Logf("успешно отправлено - %d; всего отправлено - %d.",
 			postsOk, postsOk+postsFail)
 
 		PostsMutex.Lock() // Wait until filter is done.
 		if len(Posts) == 0 {
-			logger.Info.Log("все проксичи умерли, помянем.")
+			InfoLogger.Log("все проксичи умерли, помянем.")
 			os.Exit(0)
 		}
 		PostsMutex.Unlock()

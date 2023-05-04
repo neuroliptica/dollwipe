@@ -6,10 +6,11 @@ package engine
 import (
 	"dollwipe/captcha"
 	"dollwipe/env"
-	"dollwipe/logger"
 	"dollwipe/network"
 	"net/http"
 	"os"
+
+	"github.com/neuroliptica/logger"
 )
 
 // If init successful will return not-nil PostPtr.
@@ -38,7 +39,7 @@ func InitPost(penv *env.Env, proxy network.Proxy, ch chan<- InitPostResponse) {
 		Headers:    make(map[string]env.Header, 0),
 		Cookies:    make([]*http.Cookie, 0),
 
-		PostLogger: logger.MakeLogger(proxy.String(), penv.Logger),
+		Logger: logger.MakeLogger(proxy.String()).BindToDefault(),
 	}
 	post.Log("получаю печенюшки...")
 

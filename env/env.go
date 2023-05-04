@@ -4,13 +4,13 @@
 package env
 
 import (
-	"dollwipe/logger"
 	"dollwipe/network"
 	"flag"
 	"fmt"
-	"log"
 	"math"
 	"os"
+
+	"github.com/neuroliptica/logger"
 )
 
 // WipeMode: -mode flag consts.
@@ -37,6 +37,13 @@ const (
 	SCHIZO
 	FROM_POSTS
 	DEFAULT
+)
+
+// Env loggers.
+var (
+	ProxiesLogger  = logger.MakeLogger("proxies").BindToDefault()
+	FilesLogger    = logger.MakeLogger("files").BindToDefault()
+	CaptionsLogger = logger.MakeLogger("captions").BindToDefault()
 )
 
 // Mirrors: -domain flag consts.
@@ -131,7 +138,7 @@ type Env struct {
 	// Anti-captcha api key or passcode (yet not implemented)
 	Key string
 
-	Logger chan string        // Global synced logger.
+	//Logger chan string        // Global synced logger.
 	Filter chan network.Proxy // Global synced proxy filter.
 	Status chan bool          // Global synced counter; True if post send, false if failed.
 
@@ -160,15 +167,15 @@ type Env struct {
 func (env *Env) initEnvFiles(dir string) *Env {
 	env.Files = make([]File, 0)
 	if env.FilesPerPost != 0 {
-		logger.Files.Log("инициализирую картинки...")
+		FilesLogger.Log("инициализирую картинки...")
 		cont, err := GetMedia(dir)
 		if err == nil {
 			env.Files = cont
 			env.FilesPerPost = uint8(math.Min(float64(len(env.Files)), float64(env.FilesPerPost)))
 			return env
 		}
-		logger.Files.Logf("ошибка инициализации: %v", err)
-		logger.Files.Log("буду продолжать без использования файлов.")
+		FilesLogger.Logf("ошибка инициализации: %v", err)
+		FilesLogger.Log("буду продолжать без использования файлов.")
 		env.FilesPerPost = 0
 	}
 	return env
@@ -179,38 +186,38 @@ func (env *Env) initEnvCaptions(dir string) *Env {
 	switch env.TextMode {
 	case NO_CAPS:
 		if env.FilesPerPost == 0 {
-			logger.Captions.Log("ошибка, не могу постить без текста и без картинок.")
+			CaptionsLogger.Log("ошибка, не могу постить без текста и без картинок.")
 			os.Exit(1)
 		}
 		env.Captions = []string{""}
 	case DEFAULT:
-		logger.Captions.Log("буду использовать дефолтные тексты.")
+		CaptionsLogger.Log("буду использовать дефолтные тексты.")
 		env.Captions = defaultCaptions
 	case SCHIZO:
-		logger.Captions.Log("SCHIZO not implemented yet")
+		CaptionsLogger.Log("SCHIZO not implemented yet")
 		os.Exit(0)
 	case FROM_POSTS:
-		logger.Captions.Logf("получаю каталог тредов /%s/...", env.Board)
+		CaptionsLogger.Logf("получаю каталог тредов /%s/...", env.Board)
 		caps, err := getPostsTexts(env.Board)
 		if err != nil {
-			logger.Captions.Logf("ошибка получения постов: %v", err)
-			logger.Captions.Log("буду использовать дефолтные тексты.")
+			CaptionsLogger.Logf("ошибка получения постов: %v", err)
+			CaptionsLogger.Log("буду использовать дефолтные тексты.")
 			env.Captions = defaultCaptions
 			return env
 		}
 		env.Captions = caps
 	case FROM_FILE:
-		logger.Captions.Log("инициализирую тексты постов...")
+		CaptionsLogger.Log("инициализирую тексты постов...")
 		caps, err := GetCaptions(dir)
 		if err == nil {
 			env.Captions = caps
-			logger.Captions.Logf("ok, %d текстов инициализировано.", len(caps))
+			CaptionsLogger.Logf("ok, %d текстов инициализировано.", len(caps))
 			return env
 		}
-		logger.Captions.Log("ошибка инициализации, буду использовать дефолтные тексты.")
+		CaptionsLogger.Log("ошибка инициализации, буду использовать дефолтные тексты.")
 		env.Captions = defaultCaptions
 	default:
-		logger.Captions.Logf("неизвестный режим текста постов: %d, фатальная ошибка.", env.TextMode)
+		CaptionsLogger.Logf("неизвестный режим текста постов: %d, фатальная ошибка.", env.TextMode)
 	}
 	return env
 }
@@ -218,11 +225,11 @@ func (env *Env) initEnvCaptions(dir string) *Env {
 // Check for validness and parse all proxies to env.Proxies.
 func (env *Env) initEnvProxies(dir string) *Env {
 	if env.UseProxy {
-		logger.Proxies.Log("инициализирую прокси...")
+		ProxiesLogger.Log("инициализирую прокси...")
 		proxies, err := GetProxies(dir, int(env.Sessions))
 		if err != nil {
-			logger.Proxies.Logf("ошибка инициализации: %v", err)
-			logger.Proxies.Log("не удалось инициализировать прокси, фатальная ошибка.")
+			ProxiesLogger.Logf("ошибка инициализации: %v", err)
+			ProxiesLogger.Log("не удалось инициализировать прокси, фатальная ошибка.")
 			os.Exit(0)
 		}
 		env.Proxies = proxies
@@ -233,7 +240,6 @@ func (env *Env) initEnvProxies(dir string) *Env {
 // Parse all user input and return user environment struct.
 func ParseEnv() (*Env, error) {
 	flag.Parse()
-	log.SetFlags(log.Ltime)
 
 	env := Env{
 		Mode: Mode{
@@ -256,9 +262,9 @@ func ParseEnv() (*Env, error) {
 		},
 		Content: new(Content),
 		Key:     *antiCaptchaKey,
-		Logger:  make(chan string, *bufsize),
-		Filter:  make(chan network.Proxy, *bufsize),
-		Status:  make(chan bool, *bufsize),
+		//Logger:  make(chan string, *bufsize),
+		Filter: make(chan network.Proxy, *bufsize),
+		Status: make(chan bool, *bufsize),
 
 		FailedConnectionsLimit: *limit,
 		Verbose:                *verbose,

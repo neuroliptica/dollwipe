@@ -4,11 +4,14 @@ package cache
 
 import (
 	"dollwipe/engine"
-	"dollwipe/logger"
 	"dollwipe/network"
 	"os"
 	"strings"
+
+	"github.com/neuroliptica/logger"
 )
+
+var CacheLogger = logger.MakeLogger("cache").BindToDefault()
 
 // Split provided path into two parts: filename and path to it's directory.
 func GetPath(dir string) (string, string) {
@@ -45,7 +48,7 @@ func (packed PostsCache) CachePack(dir string) error {
 	fname, path := GetPath(dir)
 	if fname == "" {
 		fname = "cache_tmp"
-		logger.Cache.Logf("using default name => ./%s", fname)
+		CacheLogger.Logf("using default name => ./%s", fname)
 		dir = path + "/" + fname
 	}
 	var err error

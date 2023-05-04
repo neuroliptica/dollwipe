@@ -3,7 +3,6 @@
 package env
 
 import (
-	"dollwipe/logger"
 	"dollwipe/network"
 	"fmt"
 	"io/ioutil"
@@ -52,7 +51,7 @@ func GetMedia(dir string) ([]File, error) {
 				continue
 			}
 			if len(cont) > 2e7 { // 20MB is the limit.
-				logger.Files.Logf("%s: размер файла превышает допустимый.", fname)
+				FilesLogger.Logf("%s: размер файла превышает допустимый.", fname)
 				failed++
 				continue
 			}
@@ -62,7 +61,7 @@ func GetMedia(dir string) ([]File, error) {
 	if len(files) == 0 {
 		return nil, fmt.Errorf("%s: не нашла подходящие файлы (.png, .mp4, etc.)", dir)
 	}
-	logger.Files.Logf("%d/%d файлов инициализировано.", len(files), len(files)+failed)
+	FilesLogger.Logf("%d/%d файлов инициализировано.", len(files), len(files)+failed)
 	return files, nil
 }
 
@@ -81,7 +80,7 @@ func GetProxies(dir string, sessions int) ([]network.Proxy, error) {
 	for _, addr := range proxies {
 		proxy, err := getProxy(addr)
 		if err != nil {
-			logger.Proxies.Logf("%s: %v", addr, err)
+			ProxiesLogger.Logf("%s: %v", addr, err)
 			continue
 		}
 		for i := 0; i < sessions; i++ {
