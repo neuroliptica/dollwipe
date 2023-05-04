@@ -48,17 +48,12 @@ func CacheAliveProxies(posts map[network.Proxy]*engine.Post) {
 }
 
 func main() {
-	//log.SetFlags(log.Ltime)
-	//go logger.GlobalLogger(logger.MainLogger)
-
 	fmt.Println(logo)
-	env.FetchUpdates("Manifest.json")
 	lenv, err := env.ParseEnv()
 	if err != nil {
 		InitLogger.Logf("ошибка инициализации: %v", err)
 		os.Exit(0)
 	}
-	//lenv.Logger = logger.GlobalLogger
 
 	// Statistics counter.
 	postsUpdate := make(chan int)

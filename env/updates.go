@@ -79,6 +79,6 @@ func FetchUpdates(local string) {
 	UpdatesLogger.Logf("нашла обновления: %s => %s", old.Version, fresh.Version)
 	UpdatesLogger.Logf("изменения => %s", fresh.Updates)
 
-	UpdatesLogger.Log("можешь обновить использя git: git pull && make build")
-	UpdatesLogger.Log("либо вручную отсюда: %s", Repository)
+	UpdatesLogger.Log("можешь обновить используя git: git pull && make build")
+	UpdatesLogger.Logf("либо вручную отсюда: %s", Repository)
 }

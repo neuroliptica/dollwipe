@@ -95,6 +95,9 @@ var (
 	// Cloudflare init settings.
 	initAtOnce = flag.Uint64("I", 1, "кол-во параллельно инициализируемых прокси.")
 	sessions   = flag.Uint64("s", 1, "кол-во сессий на одну проксю (подробнее в документации).")
+
+	// Updates check
+	updates = flag.Bool("update", false, "проверить на наличие обновлений")
 )
 
 // If we want to use captions, but text initialization has failed.
@@ -240,6 +243,11 @@ func (env *Env) initEnvProxies(dir string) *Env {
 // Parse all user input and return user environment struct.
 func ParseEnv() (*Env, error) {
 	flag.Parse()
+
+	if *updates {
+		FetchUpdates("Manifest.json")
+		os.Exit(0)
+	}
 
 	env := Env{
 		Mode: Mode{
