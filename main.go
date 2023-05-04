@@ -52,6 +52,7 @@ func main() {
 	//go logger.GlobalLogger(logger.MainLogger)
 
 	fmt.Println(logo)
+	env.FetchUpdates("Manifest.json")
 	lenv, err := env.ParseEnv()
 	if err != nil {
 		InitLogger.Logf("ошибка инициализации: %v", err)
