@@ -4,6 +4,7 @@
 package env
 
 import (
+	"dollwipe/captcha"
 	"dollwipe/network"
 	"flag"
 	"fmt"
@@ -314,6 +315,8 @@ func ParseEnv() (*Env, error) {
 	if env.FilesPerPost == 0 && env.WipeMode == CREATING {
 		return nil, fmt.Errorf("для создания тредов нужен хотя бы один файл!")
 	}
+
+	captcha.MustInitDict("./res/dict")
 
 	return &env, nil
 }
