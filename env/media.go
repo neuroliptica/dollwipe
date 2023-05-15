@@ -4,8 +4,8 @@ package env
 
 import (
 	"dollwipe/content"
-	"math/rand"
-	"time"
+
+	"github.com/google/uuid"
 )
 
 // General file type.
@@ -33,16 +33,7 @@ func (f *File) Extension() string {
 
 // Generate random filename, save original file's extension.
 func (f *File) RandName() string {
-	rand.Seed(time.Now().UnixNano())
-	var (
-		letters  = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321"
-		size     = rand.Int()%20 + 20
-		randname = make([]byte, size)
-	)
-	for i := 0; i < size; i++ {
-		randname[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(randname) + GetExt(f.Name)
+	return uuid.NewString() + f.Extension()
 }
 
 // Apply color mask on image, return new modified image.
