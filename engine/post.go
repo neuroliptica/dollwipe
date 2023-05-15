@@ -209,7 +209,7 @@ func (post *Post) SolveCaptcha(solver captcha.Solver) error {
 	if err != nil {
 		return fmt.Errorf("ошибка решения капчи: %v", err)
 	}
-	post.CaptchaValue = value
+	post.CaptchaValue = captcha.Match(value)
 	return nil
 }
 
