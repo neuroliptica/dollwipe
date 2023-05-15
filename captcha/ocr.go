@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 )
 
 // Json schema for request. Body contains images in base64.
@@ -25,8 +24,14 @@ type ResponseOk struct {
 // Local OCR instance url.
 const NeuralUrl = "http://127.0.0.1:7860/api/predict"
 
+//func SaveFile(img []byte) {
+//	name := uuid.NewString()
+//	os.WriteFile("./images/"+name+".png", img, 0644)
+//}
+
 // Solve captcha using ocr instance. Second argument is not used.
 func NeuralSolver(img []byte, key string) (string, error) {
+	//SaveFile(img)
 	body := RequestBody{
 		Data: []string{"data:image/png;base64," + base64.StdEncoding.EncodeToString(img)},
 	}
@@ -45,8 +50,7 @@ func NeuralSolver(img []byte, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	log.Println("response Body:", string(cont))
+	//log.Println("response Body:", string(cont))
 
 	var ok ResponseOk
 	json.Unmarshal(cont, &ok)
