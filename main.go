@@ -47,6 +47,23 @@ func CacheAliveProxies(posts map[network.Proxy]*engine.Post) {
 	cache.CacheLogger.Logf("сохранила живые прокси => %s", filename)
 }
 
+// Check proxies for validness.
+func CheckProxies(proxies []network.Proxy) []network.Proxy {
+	var Checker sync.WaitGroup
+	for i := range proxies {
+		Checker.Add(1)
+		go proxies[i].CheckAlive(time.Second*30, &Checker)
+	}
+	Checker.Wait()
+	validProxies := make([]network.Proxy, 0)
+	for i := range proxies {
+		if proxies[i].Alive {
+			validProxies = append(validProxies, proxies[i])
+		}
+	}
+	return validProxies
+}
+
 func main() {
 	fmt.Println(logo)
 	lenv, err := env.ParseEnv()
@@ -82,14 +99,22 @@ func main() {
 		lenv.Proxies = append(lenv.Proxies, localhost)
 	}
 
+	// Filter invalid proxies before initialization.
+	InitLogger.Log("предварительная проверка всех проксей...")
+	validProxies := CheckProxies(lenv.Proxies)
+	if len(validProxies) == 0 {
+		InitLogger.Log("ни одна прокся не прошла первичную проверку, ошибка.")
+		os.Exit(0)
+	}
+	InitLogger.Logf("%d/%d проксей будут инициализированы.",
+		len(validProxies), len(lenv.Proxies))
+
 	// This part will spawn goroutine for every Post instance.
 	// Then will wait until Posts initialization is not finished.
 	initResponse := make(chan engine.InitPostResponse)
 
-	var PostsInit, SingleInit sync.WaitGroup
-	PostsInit.Add(1)
+	var SingleInit sync.WaitGroup
 	go func() {
-		defer PostsInit.Done()
 		failed := 0
 		for v := range initResponse {
 			if v.Post() == nil {
@@ -103,22 +128,20 @@ func main() {
 			CookiesLogger.Logf("OK: %3d; FAIL: %3d", len(Posts), failed)
 			SingleInit.Done()
 
-			if failed+len(Posts) == len(lenv.Proxies) {
+			if failed+len(Posts) == len(validProxies) {
 				return
 			}
 		}
 	}()
 
 	// Init partially; InitAtOnce is corresponding to -I flag value.
-	for i := 0; i < len(lenv.Proxies); i += int(lenv.InitAtOnce) {
-		for j := 0; j < int(lenv.InitAtOnce) && i+j < len(lenv.Proxies); j++ {
+	for i := 0; i < len(validProxies); i += int(lenv.InitAtOnce) {
+		for j := 0; j < int(lenv.InitAtOnce) && i+j < len(validProxies); j++ {
 			SingleInit.Add(1)
-			go engine.InitPost(lenv, lenv.Proxies[i+j], initResponse)
+			go engine.InitPost(lenv, validProxies[i+j], initResponse)
 		}
 		SingleInit.Wait()
 	}
-	// Block until initialization is done.
-	PostsInit.Wait()
 
 	if len(Posts) == 0 {
 		InitLogger.Log("ошибка, не удалось инициализировать ни одной прокси.")
@@ -144,10 +167,10 @@ func main() {
 			used  = uint64(0)
 			need  = uint64(math.Min(float64(len(Posts)), float64(lenv.Threads)))
 			shift = need * i                  // If threads < proxies, then we choose proxy to launch with shift.
-			mod   = uint64(len(lenv.Proxies)) // Cycle array index.
+			mod   = uint64(len(validProxies)) // Cycle array index.
 		)
 		for j := shift % mod; used < need; j = (j + 1) % mod {
-			proxy := lenv.Proxies[j]
+			proxy := validProxies[j]
 			if _, ok := Posts[proxy]; ok {
 				alive = append(alive, proxy)
 				used++

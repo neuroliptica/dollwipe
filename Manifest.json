@@ -1,4 +1,4 @@
 {
-    "version": "v0.0.1",
-    "updates": "manifest created, check for updates"
+    "version": "v0.0.2",
+    "updates": "first filter invalid proxies"
 }

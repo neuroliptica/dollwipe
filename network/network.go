@@ -14,10 +14,14 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/neuroliptica/logger"
 	"golang.org/x/net/proxy"
 )
+
+var CheckerLogger = logger.MakeLogger("checker").BindToDefault()
 
 // Struct for passing files in multipart form.
 // FormName is corresponding to <name=FormName>
@@ -36,6 +40,7 @@ type Proxy struct {
 	Protocol    string
 
 	SessionId int // Usefull only with -s flag.
+	Alive     bool
 }
 
 // Default value indicates no proxy.
@@ -72,6 +77,41 @@ func (p Proxy) StringSid() string {
 		return fmt.Sprintf("%s[sid=%d]", p, p.SessionId)
 	}
 	return p.String()
+}
+
+// Check if proxy (both socks and http(s)) is alive.
+func (p *Proxy) CheckAlive(timeout time.Duration, check *sync.WaitGroup) {
+	defer check.Done()
+	if p.NoProxy() {
+		CheckerLogger.Logf("[%s] => ok", p.String())
+		p.Alive = true
+		return
+	}
+	transport := MakeTransport(*p)
+	req, err := http.NewRequest("GET", "https://api.ipify.org?format=json", nil)
+	if err != nil {
+		CheckerLogger.Logf("[%s] => error, internal error: %v", p.String(), err)
+		p.Alive = false
+		return
+	}
+	if p.NeedAuth() && p.ProxyType() != "socks" {
+		auth := MakeProxyAuthHeader(*p)
+		req.Header.Add("Proxy-Authorization", auth)
+	}
+	transport.ProxyConnectHeader = req.Header
+	client := &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		CheckerLogger.Logf("[%s] => error", p.String())
+		p.Alive = false
+		return
+	}
+	resp.Body.Close()
+	CheckerLogger.Logf("[%s] => ok", p.String())
+	p.Alive = true
 }
 
 // Create base64 Proxy-Authorization header value.
