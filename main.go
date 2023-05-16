@@ -52,7 +52,10 @@ func CheckProxies(proxies []network.Proxy) []network.Proxy {
 	var Checker sync.WaitGroup
 	for i := range proxies {
 		Checker.Add(1)
-		go proxies[i].CheckAlive(time.Second*30, &Checker)
+		go func(proxy *network.Proxy) {
+			proxy.CheckAlive(time.Second * 30)
+			Checker.Done()
+		}(&proxies[i])
 	}
 	Checker.Wait()
 	validProxies := make([]network.Proxy, 0)

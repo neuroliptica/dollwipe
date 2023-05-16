@@ -1,4 +1,4 @@
 {
-    "version": "v0.0.3",
-    "updates": "matching captcha result values"
+    "version": "v0.0.4",
+    "updates": "checker update, ocr fix"
 }

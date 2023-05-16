@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/neuroliptica/logger"
@@ -80,8 +79,7 @@ func (p Proxy) StringSid() string {
 }
 
 // Check if proxy (both socks and http(s)) is alive.
-func (p *Proxy) CheckAlive(timeout time.Duration, check *sync.WaitGroup) {
-	defer check.Done()
+func (p *Proxy) CheckAlive(timeout time.Duration) {
 	if p.NoProxy() {
 		CheckerLogger.Logf("[%s] => ok", p.String())
 		p.Alive = true
