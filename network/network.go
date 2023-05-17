@@ -141,7 +141,7 @@ func MakeTransport(p Proxy) *http.Transport {
 			User:     p.Login,
 			Password: p.Pass,
 		}
-		if p.Protocol == "socks4" {
+		if p.Protocol == "socks4" || !p.NeedAuth() {
 			auth = nil
 		}
 		dialer, _ := proxy.SOCKS5("tcp", p.String(), auth, proxy.Direct)
