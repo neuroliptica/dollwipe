@@ -53,7 +53,7 @@ func CheckProxies(proxies []network.Proxy) []network.Proxy {
 	for i := range proxies {
 		Checker.Add(1)
 		go func(proxy *network.Proxy) {
-			proxy.CheckAlive(time.Second * 60)
+			proxy.CheckAlive(time.Second * 120)
 			Checker.Done()
 		}(&proxies[i])
 	}
@@ -72,6 +72,7 @@ func main() {
 	lenv, err := env.ParseEnv()
 	if err != nil {
 		InitLogger.Logf("ошибка инициализации: %v", err)
+		InfoLogger.Log("выключаюсь...")
 		os.Exit(0)
 	}
 
@@ -107,6 +108,7 @@ func main() {
 	validProxies := CheckProxies(lenv.Proxies)
 	if len(validProxies) == 0 {
 		InitLogger.Log("ни одна прокся не прошла первичную проверку, ошибка.")
+		InfoLogger.Log("выключаюсь...")
 		os.Exit(0)
 	}
 	InitLogger.Logf("%d/%d проксей будут инициализированы.",
@@ -148,6 +150,7 @@ func main() {
 
 	if len(Posts) == 0 {
 		InitLogger.Log("ошибка, не удалось инициализировать ни одной прокси.")
+		InfoLogger.Log("выключаюсь...")
 		os.Exit(0)
 	}
 	if lenv.UseProxy {
@@ -203,6 +206,7 @@ func main() {
 		PostsMutex.Lock() // Wait until filter is done.
 		if len(Posts) == 0 {
 			InfoLogger.Log("все проксичи умерли, помянем.")
+			InfoLogger.Log("выключаюсь...")
 			os.Exit(0)
 		}
 		PostsMutex.Unlock()
