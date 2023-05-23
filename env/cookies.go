@@ -66,7 +66,14 @@ func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
 // Create webdriver instance and pass it's requests through custom middleware.
 // Error will be returned if some of the requests has failed. Otherwise re-
 // turn value should be processed as a successful, even if it is empty.
-func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration, logger LogCallback) ([]*http.Cookie, error) {
+func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration, logger LogCallback) (cookies []*http.Cookie, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger("[rod-debug] panic!: %v", r)
+			err = fmt.Errorf("возникла внутренняя ошибка")
+		}
+	}()
+
 	browser := rod.New().Timeout(2 * time.Minute).MustConnect()
 	defer browser.Close()
 
@@ -116,7 +123,7 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration, logger LogCa
 	})
 	go router.Run()
 
-	err := page.Navigate(mainPage)
+	err = page.Navigate(mainPage)
 	if err != nil {
 		return nil, err
 	}
@@ -129,11 +136,11 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration, logger LogCa
 	}
 	page.MustWaitLoad()
 
-	cookies, err := page.Cookies([]string{captchaApi})
+	cookie, err := page.Cookies([]string{captchaApi})
 	if err != nil {
 		return nil, err
 	}
-	return protoToHttp(cookies), nil
+	return protoToHttp(cookie), nil
 }
 
 // Create browser instance, pass cloudflare, get cookies and headers.
