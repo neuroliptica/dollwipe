@@ -53,7 +53,7 @@ func CheckProxies(proxies []network.Proxy) []network.Proxy {
 	for i := range proxies {
 		Checker.Add(1)
 		go func(proxy *network.Proxy) {
-			proxy.CheckAlive(time.Second * 120)
+			proxy.CheckAlive(time.Minute * 2)
 			Checker.Done()
 		}(&proxies[i])
 	}

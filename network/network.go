@@ -103,7 +103,7 @@ func (p *Proxy) CheckAlive(timeout time.Duration) {
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		CheckerLogger.Logf("[%s] => error", p.String())
+		CheckerLogger.Logf("[%s] => error: %v", p.String(), err)
 		p.Alive = false
 		return
 	}
@@ -132,8 +132,9 @@ func MakeTransport(p Proxy) *http.Transport {
 	}
 	proto := make(map[string]func(string, *tls.Conn) http.RoundTripper)
 	transport := &http.Transport{
-		TLSClientConfig: config,
-		TLSNextProto:    proto,
+		TLSClientConfig:   config,
+		TLSNextProto:      proto,
+		DisableKeepAlives: true,
 	}
 	// Setting up socks proxy.
 	if p.ProxyType() == "socks" {
@@ -145,6 +146,10 @@ func MakeTransport(p Proxy) *http.Transport {
 			auth = nil
 		}
 		dialer, _ := proxy.SOCKS5("tcp", p.String(), auth, proxy.Direct)
+		//dialer, _ := proxy.SOCKS5("tcp", p.String(), auth, &net.Dialer{
+		//	Timeout:   time.Second * 5,
+		//	KeepAlive: time.Second * 5,
+		//})
 		transport.Dial = dialer.Dial
 	} else {
 		transport.Proxy = http.ProxyURL(p.AddrParsed)
