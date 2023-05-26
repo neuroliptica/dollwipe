@@ -19,6 +19,7 @@ func TestSolveTableDriven(t *testing.T) {
 		{"9", "62-28=?", 34},
 		{"10", "?*1=4", 4},
 		{"11", "?/1=20", 20},
+		{"12", "62-?=34", 28},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

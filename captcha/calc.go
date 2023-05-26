@@ -78,8 +78,11 @@ func (term *Term) Eval() float32 {
 		}
 	case '-':
 		term.F = '+'
-		term.Mid = -term.Mid
-		return term.Eval()
+		if term.Mid != EMPTY {
+			term.Mid = -term.Mid
+			return term.Eval()
+		}
+		return -term.Eval()
 	case '*':
 		if term.Right == EMPTY {
 			return term.Left * term.Mid
