@@ -33,7 +33,7 @@ const NeuralUrl = "http://127.0.0.1:7860/api/predict"
 func NeuralSolver(img []byte, key string) (string, error) {
 	//SaveFile(img)
 	body := RequestBody{
-		Data: []string{"data:image/png;base64," + base64.StdEncoding.EncodeToString(img)},
+		Data: []string{base64.StdEncoding.EncodeToString(img)},
 	}
 	payload, err := json.Marshal(body)
 	if err != nil {
