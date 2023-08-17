@@ -309,7 +309,8 @@ func (post *Post) SendPost(params map[string]string, files map[string][]byte) (M
 		json.Unmarshal(cont, &fail)
 		if fail.Error.Code == 0 && fail.Error.Message == "" {
 			return nil, fmt.Errorf("сервер вернул неожиданный ответ: %s.", string(cont))
-		} else if fail.Error.Message != "" {
+		} else if fail.Error.Code == 0 && fail.Error.Message != "" {
+			// for some reason there is non empty ban with code 0
 			fail.Error.Code = ERROR_BANNED
 		}
 		return &fail, nil
