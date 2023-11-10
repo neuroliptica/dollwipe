@@ -504,7 +504,7 @@ class KukloGUI : GLib.Object {
             init.proxy_path = proxy_chooser_frame.get_filename();
 
             init.key    = remove_trailing_spaces(key.content);
-            init.domain = (domains.get_active() == 0) ? "life" : "hk";
+            init.domain = "hk";
 
             init.threads = threads.get_int_value();
             init.iters   = iters.get_int_value();
