@@ -19,10 +19,13 @@ package env
 import (
 	"dollwipe/network"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"time"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/devices"
+	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 )
 
@@ -36,6 +39,61 @@ type Header string
 
 // Logging callback function signature.
 type LogCallback = func(...interface{})
+
+// Screen Structure
+type ScreenStructure struct {
+	Width  int
+	Height int
+}
+
+// Gen Random Device Screen
+func RandomDeviceScreen() ScreenStructure {
+	Screens := [7]ScreenStructure{
+		{1366, 768},
+		{1920, 1080},
+		{1280, 1024},
+		{1600, 900},
+		{1380, 800},
+		{1024, 768},
+		{1440, 900},
+	}
+
+	return Screens[rand.Intn(len(Screens))]
+}
+
+// Gen Random Device Pixel Ratio
+func RandomDevicePixelRatio() float64 {
+	PixelRatios := [3]float64{
+		1,
+		1.25,
+		1.5,
+	}
+
+	return PixelRatios[rand.Intn(len(PixelRatios))]
+}
+
+// Gen Random Device
+func RandomDevice(UserAgent string) devices.Device {
+	Screen := RandomDeviceScreen()
+
+	return devices.Device{
+		Title:          "Windows",
+		Capabilities:   []string{},
+		UserAgent:      UserAgent,
+		AcceptLanguage: "en",
+		Screen: devices.Screen{
+			DevicePixelRatio: RandomDevicePixelRatio(),
+			Horizontal: devices.ScreenSize{
+				Width:  Screen.Width,
+				Height: Screen.Height,
+			},
+			Vertical: devices.ScreenSize{
+				Width:  Screen.Height,
+				Height: Screen.Width,
+			},
+		},
+	}
+}
 
 // Cast proto.NetworkCookie to http.Cookie.
 func protoToHttp(pCookies []*proto.NetworkCookie) []*http.Cookie {
@@ -74,10 +132,30 @@ func MakeRequestWithMiddleware(p network.Proxy, wait time.Duration, logger LogCa
 		}
 	}()
 
-	browser := rod.New().Timeout(2 * time.Minute).MustConnect()
+	u := launcher.New().
+		Set("--force-webrtc-ip-handling-policy", "disable_non_proxied_udp").
+		Set("--enforce-webrtc-ip-permission-check", "False").
+		Set("--use-gl", "osmesa").
+		MustLaunch()
+
+	browser := rod.New().ControlURL(u).Timeout(5 * time.Minute).MustConnect()
 	defer browser.Close()
 
 	page := browser.MustPage("")
+	Device := RandomDevice("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.63 Safari/537.36")
+	page.MustEmulate(Device)
+	page.MustSetViewport(Device.Screen.Horizontal.Width, Device.Screen.Horizontal.Height, 0, false)
+	page.MustSetExtraHeaders("cache-control", "max-age=0")
+	page.MustSetExtraHeaders("sec-ch-ua", `Google Chrome";v="102", "Chromium";v="102", ";Not A Brand";v="102"`)
+	page.MustSetExtraHeaders("sec-fetch-site", "same-origin")
+	page.MustSetExtraHeaders("sec-fetch-user", "?1")
+	page.SetUserAgent(&proto.NetworkSetUserAgentOverride{
+		UserAgent:      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.63 Safari/537.36",
+		AcceptLanguage: "ru-RU,ru;=0.9",
+		Platform:       "Windows",
+	})
+	page.MustEvalOnNewDocument(`localStorage.clear();`)
+
 	router := page.HijackRequests()
 	defer router.Stop()
 
@@ -158,7 +236,7 @@ func GetCookiesAndHeaders(p network.Proxy, wait time.Duration, logger LogCallbac
 		"Sec-Fetch-Site":            Header("none"),
 		"Sec-Fetch-User":            Header("?1"),
 		"Upgrade-Insecure-Requests": Header("1"),
-		"User-Agent":                Header("Mozilla/5.0 (Macintosh; Intel Mac OS X 11_0_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"),
+		"User-Agent":                Header("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.63 Safari/537.36"),
 	}
 	return cookies, headers, nil
 }
