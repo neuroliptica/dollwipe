@@ -1,5 +1,5 @@
 # dollwipe
-Дочка [вот этого чуда](https://github.com/neuroliptica/traumatic), переписанная с учётом ошибок своего предка.
+Дочка [вот этого чуда](https://github.com/neuroliptica/traumatic), переписанная с учётом ошибок своего предка. [Более современное поделие](https://github.com/neuroliptica/yaswm).
 
 ![cli](https://imgur.com/Ehk13iR.png)
 
